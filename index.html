@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>生日快乐</title>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -55,10 +58,12 @@
     position: relative;
   }
 
-  /* Canvas cake */
-  #cakeCanvas {
+  /* 3D Cake */
+  #cake3d {
     display: block;
     margin: 0 auto 8px;
+    width: 220px;
+    height: 200px;
   }
 
   .login-card h2 {
@@ -333,7 +338,7 @@
 <!-- ==================== Page 1: Login ==================== -->
 <div class="page" id="page1">
   <div class="login-card">
-    <div class="icon"><canvas id="cakeCanvas" width="220" height="200"></canvas></div>
+    <div class="icon"><div id="cake3d"></div></div>
     <h2>输入四位生日，开启惊喜</h2>
     <div class="pwd-input-wrap">
       <input type="password" id="pwdInput" placeholder="请输入生日" maxlength="10" autocomplete="off">
@@ -380,7 +385,7 @@
   </div>
 </div>
 
-<script>
+<script type="module">
 // ==================== Page Navigation ====================
 const page1 = document.getElementById('page1');
 const page2 = document.getElementById('page2');
@@ -579,215 +584,193 @@ window.addEventListener('resize', () => {
   if (fwActive) resizeFW();
 });
 
-// ==================== Canvas Cake ====================
-const cakeCanvas = document.getElementById('cakeCanvas');
-const cakeCtx = cakeCanvas.getContext('2d');
-const CW = cakeCanvas.width;
-const CH = cakeCanvas.height;
-const cx = CW / 2;
+// ==================== 3D Cake (Three.js) ====================
+import * as THREE from 'three';
 
-// Particle system for cake
-let cakeParticles = [];
-class CakeParticle {
-  constructor() { this.reset(true); }
-  reset(init) {
-    this.x = cx + (Math.random() - 0.5) * 60;
-    this.y = init ? 90 + Math.random() * 60 : 40;
-    this.size = Math.random() * 2.5 + 1;
-    this.speedY = -(Math.random() * 0.8 + 0.3);
-    this.speedX = (Math.random() - 0.5) * 0.4;
-    this.life = 1;
-    this.decay = Math.random() * 0.008 + 0.004;
-    const colors = ['#ffb0c8','#ff90b0','#ffd0e0','#fff','#ffa0c0','#ffc0d8'];
-    this.color = colors[Math.floor(Math.random()*colors.length)];
-  }
-  update() {
-    this.x += this.speedX + Math.sin(this.y*0.03) * 0.2;
-    this.y += this.speedY;
-    this.life -= this.decay;
-    if (this.life <= 0 || this.y < -10) this.reset(false);
-  }
-  draw(ctx) {
-    ctx.save();
-    ctx.globalAlpha = this.life;
-    ctx.fillStyle = this.color;
-    ctx.shadowColor = this.color;
-    ctx.shadowBlur = this.size * 3;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
-    ctx.fill();
-    ctx.restore();
-  }
+const cakeContainer = document.getElementById('cake3d');
+const scene = new THREE.Scene();
+
+// Camera
+const camera = new THREE.PerspectiveCamera(35, 220/200, 0.1, 100);
+camera.position.set(0, 0.3, 5);
+camera.lookAt(0, -0.1, 0);
+
+// Renderer
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setSize(220, 200);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+cakeContainer.appendChild(renderer.domElement);
+
+// Lights
+scene.add(new THREE.AmbientLight('#ffd0e8', 1.5));
+const key = new THREE.DirectionalLight('#ffffff', 2.5);
+key.position.set(2, 3, 3);
+scene.add(key);
+const fill = new THREE.DirectionalLight('#ffb0d0', 1.2);
+fill.position.set(-1.5, 1, -1);
+scene.add(fill);
+const rim = new THREE.DirectionalLight('#ffffff', 1.8);
+rim.position.set(0, -0.5, 2);
+scene.add(rim);
+
+// --- Plate ---
+const plateGeo = new THREE.CylinderGeometry(0.75, 0.78, 0.06, 48);
+const plateMat = new THREE.MeshStandardMaterial({ color: '#fffefc', roughness: 0.3, metalness: 0.05 });
+const plate = new THREE.Mesh(plateGeo, plateMat);
+plate.position.y = -0.85;
+scene.add(plate);
+
+// Plate rim
+const rimGeo = new THREE.TorusGeometry(0.76, 0.03, 16, 48);
+const rimMesh = new THREE.Mesh(rimGeo, plateMat);
+rimMesh.rotation.x = Math.PI / 2;
+rimMesh.position.y = -0.82;
+scene.add(rimMesh);
+
+// --- Bottom cake layer ---
+const bottomGeo = new THREE.CylinderGeometry(0.55, 0.6, 0.45, 48, 1, false, 0, Math.PI * 2);
+const cakeMat = new THREE.MeshStandardMaterial({ color: '#ffb0c8', roughness: 0.5, metalness: 0.02 });
+const bottom = new THREE.Mesh(bottomGeo, cakeMat);
+bottom.position.y = -0.55;
+scene.add(bottom);
+
+// --- Frosting ring between layers ---
+const frostingGeo = new THREE.CylinderGeometry(0.62, 0.62, 0.08, 48);
+const frostingMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.25, metalness: 0.02 });
+const frosting = new THREE.Mesh(frostingGeo, frostingMat);
+frosting.position.y = -0.3;
+scene.add(frosting);
+
+// --- Top cake layer ---
+const topGeo = new THREE.CylinderGeometry(0.4, 0.48, 0.35, 48);
+const topCakeMat = new THREE.MeshStandardMaterial({ color: '#ffc8d8', roughness: 0.45, metalness: 0.02 });
+const topLayer = new THREE.Mesh(topGeo, topCakeMat);
+topLayer.position.y = -0.1;
+scene.add(topLayer);
+
+// --- Top frosting ---
+const topFrostGeo = new THREE.CylinderGeometry(0.43, 0.43, 0.07, 48);
+const topFrost = new THREE.Mesh(topFrostGeo, frostingMat);
+topFrost.position.y = 0.1;
+scene.add(topFrost);
+
+// --- Cream drip ring ---
+for (let i = 0; i < 16; i++) {
+  const angle = (i / 16) * Math.PI * 2;
+  const dripLen = 0.06 + Math.random() * 0.15;
+  const dripGeo = new THREE.SphereGeometry(0.025, 8, 4);
+  const drip = new THREE.Mesh(dripGeo, frostingMat);
+  drip.position.set(Math.cos(angle) * 0.44, 0.06 - dripLen/2, Math.sin(angle) * 0.44);
+  drip.scale.set(0.6, dripLen/0.05, 0.6);
+  scene.add(drip);
 }
-for (let i = 0; i < 30; i++) cakeParticles.push(new CakeParticle());
 
-let flameTime = 0;
-function drawCake() {
-  cakeCtx.clearRect(0, 0, CW, CH);
-
-  // --- Floating particles (behind cake) ---
-  for (const p of cakeParticles) { p.update(); p.draw(cakeCtx); }
-
-  // --- Plate glow ---
-  cakeCtx.save();
-  const plateGlow = cakeCtx.createRadialGradient(cx, 168, 0, cx, 168, 60);
-  plateGlow.addColorStop(0, 'rgba(255,180,200,0.3)');
-  plateGlow.addColorStop(1, 'rgba(255,180,200,0)');
-  cakeCtx.fillStyle = plateGlow;
-  cakeCtx.beginPath();
-  cakeCtx.ellipse(cx, 168, 60, 10, 0, 0, Math.PI*2);
-  cakeCtx.fill();
-  cakeCtx.restore();
-
-  // --- Plate ---
-  cakeCtx.save();
-  const plateGrad = cakeCtx.createLinearGradient(cx-50, 164, cx+50, 172);
-  plateGrad.addColorStop(0, 'rgba(255,255,255,0.1)');
-  plateGrad.addColorStop(0.5, 'rgba(255,255,255,0.3)');
-  plateGrad.addColorStop(1, 'rgba(255,255,255,0.1)');
-  cakeCtx.fillStyle = plateGrad;
-  cakeCtx.beginPath();
-  cakeCtx.ellipse(cx, 170, 52, 7, 0, 0, Math.PI*2);
-  cakeCtx.fill();
-  cakeCtx.strokeStyle = 'rgba(255,255,255,0.25)';
-  cakeCtx.lineWidth = 1;
-  cakeCtx.stroke();
-  cakeCtx.restore();
-
-  // --- Cake body (3D effect) ---
-  const bodyTop = 120;
-  const bodyH = 44;
-  const bodyW = 82;
-  // Main body
-  cakeCtx.save();
-  const bodyGrad = cakeCtx.createLinearGradient(cx-bodyW/2, bodyTop, cx+bodyW/2, bodyTop+bodyH);
-  bodyGrad.addColorStop(0, '#ffb8d0');
-  bodyGrad.addColorStop(0.2, '#ffd0e0');
-  bodyGrad.addColorStop(0.5, '#ffc0d8');
-  bodyGrad.addColorStop(0.8, '#f898b8');
-  bodyGrad.addColorStop(1, '#e878a0');
-  cakeCtx.fillStyle = bodyGrad;
-  cakeCtx.beginPath();
-  cakeCtx.moveTo(cx-bodyW/2+8, bodyTop);
-  cakeCtx.lineTo(cx+bodyW/2-8, bodyTop);
-  cakeCtx.quadraticCurveTo(cx+bodyW/2, bodyTop, cx+bodyW/2, bodyTop+8);
-  cakeCtx.lineTo(cx+bodyW/2-2, bodyTop+bodyH-2);
-  cakeCtx.quadraticCurveTo(cx+bodyW/2-2, bodyTop+bodyH+4, cx+bodyW/2-6, bodyTop+bodyH+4);
-  cakeCtx.lineTo(cx-bodyW/2+6, bodyTop+bodyH+4);
-  cakeCtx.quadraticCurveTo(cx-bodyW/2+2, bodyTop+bodyH+4, cx-bodyW/2+2, bodyTop+bodyH-2);
-  cakeCtx.lineTo(cx-bodyW/2, bodyTop+8);
-  cakeCtx.quadraticCurveTo(cx-bodyW/2, bodyTop, cx-bodyW/2+8, bodyTop);
-  cakeCtx.fill();
-  // Top shine
-  const shineGrad = cakeCtx.createLinearGradient(cx-30, bodyTop, cx-30, bodyTop+bodyH);
-  shineGrad.addColorStop(0, 'rgba(255,255,255,0.3)');
-  shineGrad.addColorStop(0.3, 'rgba(255,255,255,0.05)');
-  shineGrad.addColorStop(1, 'rgba(255,255,255,0)');
-  cakeCtx.fillStyle = shineGrad;
-  cakeCtx.fill();
-  cakeCtx.restore();
-
-  // --- Cream frosting ---
-  const creamY = bodyTop - 2;
-  cakeCtx.save();
-  // White cream with wave
-  cakeCtx.fillStyle = '#fff';
-  cakeCtx.shadowColor = 'rgba(255,255,255,0.5)';
-  cakeCtx.shadowBlur = 6;
-  cakeCtx.beginPath();
-  cakeCtx.moveTo(cx-bodyW/2-2, creamY);
-  // Wavy top
-  for (let i = 0; i < 8; i++) {
-    const wx = cx-bodyW/2-2 + (bodyW+4)/8 * i;
-    const wy = creamY + (i%2===0 ? 0 : -5);
-    cakeCtx.lineTo(wx + (bodyW+4)/16, wy);
-  }
-  cakeCtx.lineTo(cx+bodyW/2+2, creamY);
-  cakeCtx.lineTo(cx+bodyW/2, creamY+10);
-  cakeCtx.lineTo(cx+bodyW/2-2, creamY+12);
-  cakeCtx.quadraticCurveTo(cx+bodyW/2-2, creamY+16, cx+bodyW/2-5, creamY+16);
-  cakeCtx.lineTo(cx-bodyW/2+5, creamY+16);
-  cakeCtx.quadraticCurveTo(cx-bodyW/2+2, creamY+16, cx-bodyW/2+2, creamY+12);
-  cakeCtx.lineTo(cx-bodyW/2, creamY+10);
-  cakeCtx.closePath();
-  cakeCtx.fill();
-  cakeCtx.shadowBlur = 0;
-  cakeCtx.restore();
-
-  // --- Pink decorations on cream ---
-  const dotsY = creamY + 8;
-  for (let i = 0; i < 5; i++) {
-    const dx = cx - 28 + i * 14;
-    cakeCtx.save();
-    const dotGrad = cakeCtx.createRadialGradient(dx, dotsY, 0, dx, dotsY, 4);
-    dotGrad.addColorStop(0, '#ff90b8');
-    dotGrad.addColorStop(1, '#e87090');
-    cakeCtx.fillStyle = dotGrad;
-    cakeCtx.shadowColor = 'rgba(255,100,140,0.5)';
-    cakeCtx.shadowBlur = 4;
-    cakeCtx.beginPath();
-    cakeCtx.arc(dx, dotsY, 3.5, 0, Math.PI*2);
-    cakeCtx.fill();
-    cakeCtx.restore();
-  }
-
-  // --- Candles ---
-  const candlePositions = [cx-20, cx, cx+20];
-  flameTime += 0.05;
-  for (const cpos of candlePositions) {
-    // Candle body
-    const cTop = creamY - 32;
-    const cGrad = cakeCtx.createLinearGradient(cpos-3, cTop, cpos+3, creamY);
-    cGrad.addColorStop(0, '#fff0f5');
-    cGrad.addColorStop(0.5, '#ffe0ec');
-    cGrad.addColorStop(1, '#ffb8d0');
-    cakeCtx.fillStyle = cGrad;
-    cakeCtx.fillRect(cpos-3, cTop, 6, 32);
-    cakeCtx.strokeStyle = 'rgba(255,200,220,0.6)';
-    cakeCtx.lineWidth = 0.5;
-    cakeCtx.strokeRect(cpos-3, cTop, 6, 32);
-
-    // Flame
-    const flickerX = Math.sin(flameTime * 3 + cpos) * 1.5;
-    const flickerY = Math.cos(flameTime * 4 + cpos) * 1;
-    const fy = cTop + flickerY;
-    const fx = cpos + flickerX;
-    // Outer flame
-    const fGradOuter = cakeCtx.createRadialGradient(fx, fy-4, 0, fx, fy-4, 8);
-    fGradOuter.addColorStop(0, 'rgba(255,240,200,0.9)');
-    fGradOuter.addColorStop(0.4, 'rgba(255,180,60,0.7)');
-    fGradOuter.addColorStop(0.7, 'rgba(255,120,30,0.3)');
-    fGradOuter.addColorStop(1, 'rgba(255,80,10,0)');
-    cakeCtx.fillStyle = fGradOuter;
-    cakeCtx.beginPath();
-    cakeCtx.ellipse(fx, fy-4, 6, 10, 0, 0, Math.PI*2);
-    cakeCtx.fill();
-    // Inner bright core
-    const fGradInner = cakeCtx.createRadialGradient(fx, fy-3, 0, fx, fy-3, 4);
-    fGradInner.addColorStop(0, 'rgba(255,255,255,1)');
-    fGradInner.addColorStop(0.5, 'rgba(255,240,200,0.8)');
-    fGradInner.addColorStop(1, 'rgba(255,180,60,0)');
-    cakeCtx.fillStyle = fGradInner;
-    cakeCtx.beginPath();
-    cakeCtx.ellipse(fx, fy-3, 3, 6, 0, 0, Math.PI*2);
-    cakeCtx.fill();
-
-    // Flame glow
-    cakeCtx.save();
-    cakeCtx.globalCompositeOperation = 'lighter';
-    const glowGrad = cakeCtx.createRadialGradient(fx, fy-4, 0, fx, fy-4, 16);
-    glowGrad.addColorStop(0, 'rgba(255,200,120,0.4)');
-    glowGrad.addColorStop(1, 'rgba(255,200,120,0)');
-    cakeCtx.fillStyle = glowGrad;
-    cakeCtx.beginPath();
-    cakeCtx.arc(fx, fy-4, 16, 0, Math.PI*2);
-    cakeCtx.fill();
-    cakeCtx.restore();
-  }
-
-  requestAnimationFrame(drawCake);
+// --- Pink dots on top ---
+for (let i = 0; i < 8; i++) {
+  const angle = (i / 8) * Math.PI * 2;
+  const r = 0.28;
+  const dotGeo = new THREE.SphereGeometry(0.028, 8, 8);
+  const dotMat = new THREE.MeshStandardMaterial({ color: '#ff7090', roughness: 0.3, metalness: 0.05 });
+  const dot = new THREE.Mesh(dotGeo, dotMat);
+  dot.position.set(Math.cos(angle) * r, 0.16, Math.sin(angle) * r);
+  scene.add(dot);
 }
-drawCake();
+
+// --- Candles ---
+const candleGroup = new THREE.Group();
+const candleMat = new THREE.MeshStandardMaterial({ color: '#fff0f5', roughness: 0.4, metalness: 0.05 });
+const positions = [-0.14, 0, 0.14];
+const flames = [];
+
+positions.forEach((px) => {
+  const candleGeo = new THREE.CylinderGeometry(0.025, 0.03, 0.28, 16);
+  const candle = new THREE.Mesh(candleGeo, candleMat);
+  candle.position.set(px, 0.28, 0);
+  candleGroup.add(candle);
+
+  // Flame (point light)
+  const flameLight = new THREE.PointLight('#ffcc66', 2, 0.3);
+  flameLight.position.set(px, 0.45, 0);
+  candleGroup.add(flameLight);
+  flames.push({ light: flameLight, px, baseY: 0.45 });
+});
+
+// Flame glow spheres
+positions.forEach((px) => {
+  const glowGeo = new THREE.SphereGeometry(0.04, 8, 8);
+  const glowMat = new THREE.MeshBasicMaterial({ color: '#ffdd88' });
+  const glow = new THREE.Mesh(glowGeo, glowMat);
+  glow.position.set(px, 0.45, 0);
+  candleGroup.add(glow);
+  flames[flames.findIndex(f => f.px === px)].glow = glow;
+
+  const coreGeo = new THREE.SphereGeometry(0.018, 8, 8);
+  const coreMat = new THREE.MeshBasicMaterial({ color: '#ffffff' });
+  const core = new THREE.Mesh(coreGeo, coreMat);
+  core.position.set(px, 0.455, 0);
+  candleGroup.add(core);
+  flames[flames.findIndex(f => f.px === px)].core = core;
+});
+
+candleGroup.position.y = 0;
+scene.add(candleGroup);
+
+// --- Floating particles ---
+const particlesGroup = new THREE.Group();
+const particleColors = ['#ffb0c8', '#ff90b0', '#ffd0e0', '#ffffff', '#ffa0c0', '#ffc8d8'];
+const particleData = [];
+for (let i = 0; i < 40; i++) {
+  const geo = new THREE.SphereGeometry(0.015 + Math.random() * 0.025, 6, 6);
+  const mat = new THREE.MeshBasicMaterial({ color: particleColors[Math.floor(Math.random() * particleColors.length)], transparent: true, opacity: 0.7 });
+  const p = new THREE.Mesh(geo, mat);
+  p.userData = {
+    baseX: (Math.random() - 0.5) * 1.8,
+    baseY: -0.9 + Math.random() * 2,
+    baseZ: (Math.random() - 0.5) * 1.2,
+    speedY: 0.003 + Math.random() * 0.008,
+    speedX: (Math.random() - 0.5) * 0.003,
+    amplitude: Math.random() * 0.3,
+    phase: Math.random() * Math.PI * 2,
+  };
+  p.position.set(p.userData.baseX, p.userData.baseY, p.userData.baseZ);
+  particlesGroup.add(p);
+  particleData.push(p);
+}
+scene.add(particlesGroup);
+
+// Animation
+const clock = new THREE.Clock();
+function animate3D() {
+  requestAnimationFrame(animate3D);
+  const t = clock.getElapsedTime();
+
+  // Rotate cake slowly
+  scene.rotation.y = Math.sin(t * 0.3) * 0.25;
+
+  // Flicker flames
+  flames.forEach((f) => {
+    const flicker = 1 + Math.sin(t * 12 + f.px * 5) * 0.1 + Math.sin(t * 18 + f.px) * 0.08;
+    f.light.intensity = 2 * flicker;
+    f.light.position.y = f.baseY + Math.sin(t * 10) * 0.01;
+    if (f.glow) { f.glow.scale.setScalar(flicker); f.glow.position.y = f.light.position.y; }
+    if (f.core) { f.core.position.y = f.light.position.y + 0.005; }
+  });
+
+  // Animate particles
+  particleData.forEach((p) => {
+    p.userData.baseY += p.userData.speedY;
+    if (p.userData.baseY > 1.5) p.userData.baseY = -0.9;
+    p.position.x = p.userData.baseX + Math.sin(t * 2 + p.userData.phase) * p.userData.amplitude;
+    p.position.y = p.userData.baseY;
+    p.position.z = p.userData.baseZ + Math.cos(t * 1.5 + p.userData.phase) * p.userData.amplitude * 0.5;
+    p.material.opacity = 0.4 + 0.3 * Math.sin(t * 3 + p.userData.phase);
+  });
+
+  renderer.render(scene, camera);
+}
+animate3D();
 
 // ==================== Init ====================
 createFloatDots();
