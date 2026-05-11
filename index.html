@@ -536,7 +536,7 @@ let ptParticles = [];
 let ptState = 'scatter'; // scatter | gather | hold | morph
 let ptTimer = 0;
 let ptTextIndex = 0;
-const ptTexts = ['同桌，生日快乐', 'HAPPY BIRTHDAY', '永远十八岁'];
+const ptTexts = ['同桌', '生日快乐'];
 let ptTargets = []; // target positions for current text
 
 function resizePT() {
@@ -544,15 +544,14 @@ function resizePT() {
   ptCanvas.height = window.innerHeight;
 }
 
-// Sample text to pixel positions
+// Sample text to pixel positions (grid sampling for dot-matrix look)
 function sampleText(text) {
   const off = document.createElement('canvas');
   off.width = ptCanvas.width;
   off.height = ptCanvas.height;
   const offCtx = off.getContext('2d');
   offCtx.fillStyle = '#fff';
-  // Adaptive font size based on screen
-  const fontSize = Math.min(ptCanvas.width / text.length * 1.2, ptCanvas.height * 0.25);
+  const fontSize = Math.min(ptCanvas.width / text.length * 1.6, ptCanvas.height * 0.25);
   offCtx.font = `bold ${fontSize}px "PingFang SC","Microsoft YaHei",sans-serif`;
   offCtx.textAlign = 'center';
   offCtx.textBaseline = 'middle';
@@ -560,17 +559,13 @@ function sampleText(text) {
 
   const imageData = offCtx.getImageData(0, 0, ptCanvas.width, ptCanvas.height);
   const pixels = imageData.data;
-  const step = 4; // sample every N pixels
+  const step = 5; // denser dots for clearer text
   const points = [];
   for (let y = 0; y < ptCanvas.height; y += step) {
     for (let x = 0; x < ptCanvas.width; x += step) {
       const idx = (y * ptCanvas.width + x) * 4;
-      if (pixels[idx + 3] > 60) {
-        points.push({
-          tx: x,
-          ty: y,
-          bright: pixels[idx + 3] / 255
-        });
+      if (pixels[idx + 3] > 80) {
+        points.push({ tx: x, ty: y });
       }
     }
   }
@@ -583,43 +578,25 @@ class PtParticle {
     this.y = Math.random() * h;
     this.tx = this.x;
     this.ty = this.y;
-    this.size = Math.random() * 2 + 1;
-    this.baseSize = this.size;
-    this.color = '255,220,240';
-    // Warm color palette for some particles
-    const roll = Math.random();
-    if (roll < 0.15) this.color = '255,200,150'; // warm gold
-    else if (roll < 0.3) this.color = '200,180,255'; // lavender
-    else if (roll < 0.45) this.color = '255,180,200'; // pink
   }
 }
 
-function initPTParticles() {
+function initPTParticles(text) {
   ptParticles = [];
-  // Always create enough particles to form text
-  const sample = sampleText(ptTexts[0]);
-  const count = Math.max(sample.length, 1500);
-  for (let i = 0; i < count; i++) {
+  const sample = sampleText(text);
+  // Only create exactly the particles needed for text — no extras
+  for (let i = 0; i < sample.length; i++) {
     ptParticles.push(new PtParticle(ptCanvas.width, ptCanvas.height));
   }
-  // Assign targets for first text
   assignTargets(sample);
 }
 
 function assignTargets(sample) {
-  // Shuffle sample to randomly assign to particles
   const shuffled = [...sample].sort(() => Math.random() - 0.5);
   ptTargets = [];
   for (let i = 0; i < ptParticles.length; i++) {
-    if (i < shuffled.length) {
-      ptParticles[i].tx = shuffled[i].tx;
-      ptParticles[i].ty = shuffled[i].ty;
-      ptTargets.push({ tx: shuffled[i].tx, ty: shuffled[i].ty });
-    } else {
-      // Extra particles go to edge
-      ptParticles[i].tx = Math.random() * ptCanvas.width;
-      ptParticles[i].ty = Math.random() * ptCanvas.height;
-    }
+    ptParticles[i].tx = shuffled[i].tx;
+    ptParticles[i].ty = shuffled[i].ty;
   }
 }
 
@@ -636,62 +613,43 @@ function animatePT() {
   ptCtx.clearRect(0, 0, ptCanvas.width, ptCanvas.height);
   ptTimer++;
 
-  // State machine
-  if (ptState === 'scatter') {
-    // Particles are scattered, wait briefly then gather
-    if (ptTimer > 40) {
+  // State machine: hold → scatter → gather → hold (one-way, no loop)
+  if (ptState === 'hold') {
+    if (ptTextIndex < ptTexts.length - 1 && ptTimer > 200) {
+      scatterParticles();
+      ptTextIndex++;
+      ptState = 'scatter';
+      ptTimer = 0;
+    }
+  } else if (ptState === 'scatter') {
+    if (ptTimer > 50) {
       const sample = sampleText(ptTexts[ptTextIndex]);
       assignTargets(sample);
       ptState = 'gather';
       ptTimer = 0;
     }
   } else if (ptState === 'gather') {
-    // Wait for particles to reach targets
-    if (ptTimer > 140) {
+    if (ptTimer > 100) {
       ptState = 'hold';
       ptTimer = 0;
     }
-  } else if (ptState === 'hold') {
-    // Hold text visible
-    if (ptTimer > 140) {
-      // Morph to next text or scatter
-      ptTextIndex = (ptTextIndex + 1) % ptTexts.length;
-      const sample = sampleText(ptTexts[ptTextIndex]);
-      assignTargets(sample);
-      ptState = 'gather';
-      ptTimer = 50; // start mid-gather
-    }
   }
 
-  // Update particle positions (spring/lerp toward target)
-  const lerpSpeed = ptState === 'scatter' ? 0.015 : 0.045;
+  const lerpSpeed = ptState === 'scatter' ? 0.018 : 0.05;
+  const dotSize = 3; // uniform sharp dot size (half of step=6)
   for (const p of ptParticles) {
-    // Lerp toward target
     p.x += (p.tx - p.x) * lerpSpeed;
     p.y += (p.ty - p.y) * lerpSpeed;
 
-    // Slight wobble when holding
-    const wobble = ptState === 'hold' ? 0.6 : 0.2;
-    p.x += (Math.random() - 0.5) * wobble;
-    p.y += (Math.random() - 0.5) * wobble;
-
-    // Size based on proximity to target (bigger when gathered)
+    // Distance-based alpha only, no glow
     const dist = Math.hypot(p.tx - p.x, p.ty - p.y);
-    p.size = p.baseSize * (1 + (1 - Math.min(dist / 80, 1)) * 1.5);
+    let alpha = 1;
+    if (dist > 100) alpha = 0.3;
+    else if (dist > 40) alpha = 0.3 + 0.7 * (1 - (dist - 40) / 60);
 
-    // Draw
-    const alpha = 0.5 + (1 - Math.min(dist / 200, 1)) * 0.5;
-    ptCtx.save();
-    ptCtx.globalAlpha = alpha;
-    const grad = ptCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 2.5);
-    grad.addColorStop(0, `rgba(${p.color},1)`);
-    grad.addColorStop(0.4, `rgba(${p.color},0.6)`);
-    grad.addColorStop(1, `rgba(${p.color},0)`);
-    ptCtx.fillStyle = grad;
-    ptCtx.beginPath();
-    ptCtx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2);
-    ptCtx.fill();
-    ptCtx.restore();
+    // Sharp white square dot (pixel-grid look)
+    ptCtx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ptCtx.fillRect(p.x - dotSize/2, p.y - dotSize/2, dotSize, dotSize);
   }
 
   requestAnimationFrame(animatePT);
@@ -700,9 +658,9 @@ function animatePT() {
 function startParticleText() {
   ptActive = true;
   resizePT();
-  initPTParticles();
-  scatterParticles();
-  ptState = 'scatter';
+  initPTParticles(ptTexts[0]);
+  // Start with "同桌" already formed
+  ptState = 'hold';
   ptTimer = 0;
   ptTextIndex = 0;
   animatePT();
