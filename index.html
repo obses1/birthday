@@ -129,8 +129,16 @@
     text-shadow: 0 0 8px rgba(255,100,130,0.4);
   }
 
-  /* ============ Page 2: Fireworks + Greeting ============ */
+  /* ============ Page 2: Fireworks + Particle Text ============ */
   #page2 { background: radial-gradient(ellipse at center, #2d1040 0%, #0d0018 100%); }
+
+  #particleTextCanvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 5;
+    pointer-events: none;
+  }
 
   .greeting-text {
     z-index: 10;
@@ -348,12 +356,10 @@
   </div>
 </div>
 
-<!-- ==================== Page 2: Fireworks ==================== -->
+<!-- ==================== Page 2: Fireworks + Particle Text ==================== -->
 <div class="page hidden" id="page2">
   <canvas class="bg-canvas" id="fireworkCanvas"></canvas>
-  <div class="greeting-text">
-    <h1>同桌，生日快乐</h1>
-  </div>
+  <canvas id="particleTextCanvas"></canvas>
   <button class="next-btn" id="toPage3">再点一次</button>
 </div>
 
@@ -409,6 +415,7 @@ function doLogin() {
     loginError.textContent = '';
     showPage(page2);
     startFireworks();
+    startParticleText();
   } else {
     loginError.textContent = '密码错误，再试一次吧 ✨';
     pwdInput.value = '';
@@ -521,6 +528,191 @@ function stopFireworks() {
   fwParticles = [];
 }
 
+// ==================== Particle Text Animation ====================
+const ptCanvas = document.getElementById('particleTextCanvas');
+const ptCtx = ptCanvas.getContext('2d');
+let ptActive = false;
+let ptParticles = [];
+let ptState = 'scatter'; // scatter | gather | hold | morph
+let ptTimer = 0;
+let ptTextIndex = 0;
+const ptTexts = ['同桌，生日快乐', 'HAPPY BIRTHDAY', '永远十八岁'];
+let ptTargets = []; // target positions for current text
+
+function resizePT() {
+  ptCanvas.width = window.innerWidth;
+  ptCanvas.height = window.innerHeight;
+}
+
+// Sample text to pixel positions
+function sampleText(text) {
+  const off = document.createElement('canvas');
+  off.width = ptCanvas.width;
+  off.height = ptCanvas.height;
+  const offCtx = off.getContext('2d');
+  offCtx.fillStyle = '#fff';
+  // Adaptive font size based on screen
+  const fontSize = Math.min(ptCanvas.width / text.length * 1.2, ptCanvas.height * 0.25);
+  offCtx.font = `bold ${fontSize}px "PingFang SC","Microsoft YaHei",sans-serif`;
+  offCtx.textAlign = 'center';
+  offCtx.textBaseline = 'middle';
+  offCtx.fillText(text, ptCanvas.width/2, ptCanvas.height/2);
+
+  const imageData = offCtx.getImageData(0, 0, ptCanvas.width, ptCanvas.height);
+  const pixels = imageData.data;
+  const step = 4; // sample every N pixels
+  const points = [];
+  for (let y = 0; y < ptCanvas.height; y += step) {
+    for (let x = 0; x < ptCanvas.width; x += step) {
+      const idx = (y * ptCanvas.width + x) * 4;
+      if (pixels[idx + 3] > 60) {
+        points.push({
+          tx: x,
+          ty: y,
+          bright: pixels[idx + 3] / 255
+        });
+      }
+    }
+  }
+  return points;
+}
+
+class PtParticle {
+  constructor(w, h) {
+    this.x = Math.random() * w;
+    this.y = Math.random() * h;
+    this.tx = this.x;
+    this.ty = this.y;
+    this.size = Math.random() * 2 + 1;
+    this.baseSize = this.size;
+    this.color = '255,220,240';
+    // Warm color palette for some particles
+    const roll = Math.random();
+    if (roll < 0.15) this.color = '255,200,150'; // warm gold
+    else if (roll < 0.3) this.color = '200,180,255'; // lavender
+    else if (roll < 0.45) this.color = '255,180,200'; // pink
+  }
+}
+
+function initPTParticles() {
+  ptParticles = [];
+  // Always create enough particles to form text
+  const sample = sampleText(ptTexts[0]);
+  const count = Math.max(sample.length, 1500);
+  for (let i = 0; i < count; i++) {
+    ptParticles.push(new PtParticle(ptCanvas.width, ptCanvas.height));
+  }
+  // Assign targets for first text
+  assignTargets(sample);
+}
+
+function assignTargets(sample) {
+  // Shuffle sample to randomly assign to particles
+  const shuffled = [...sample].sort(() => Math.random() - 0.5);
+  ptTargets = [];
+  for (let i = 0; i < ptParticles.length; i++) {
+    if (i < shuffled.length) {
+      ptParticles[i].tx = shuffled[i].tx;
+      ptParticles[i].ty = shuffled[i].ty;
+      ptTargets.push({ tx: shuffled[i].tx, ty: shuffled[i].ty });
+    } else {
+      // Extra particles go to edge
+      ptParticles[i].tx = Math.random() * ptCanvas.width;
+      ptParticles[i].ty = Math.random() * ptCanvas.height;
+    }
+  }
+}
+
+function scatterParticles() {
+  for (const p of ptParticles) {
+    p.tx = (Math.random() - 0.5) * ptCanvas.width * 2 + ptCanvas.width / 2;
+    p.ty = (Math.random() - 0.5) * ptCanvas.height * 2 + ptCanvas.height / 2;
+  }
+}
+
+function animatePT() {
+  if (!ptActive) return;
+
+  ptCtx.clearRect(0, 0, ptCanvas.width, ptCanvas.height);
+  ptTimer++;
+
+  // State machine
+  if (ptState === 'scatter') {
+    // Particles are scattered, wait briefly then gather
+    if (ptTimer > 40) {
+      const sample = sampleText(ptTexts[ptTextIndex]);
+      assignTargets(sample);
+      ptState = 'gather';
+      ptTimer = 0;
+    }
+  } else if (ptState === 'gather') {
+    // Wait for particles to reach targets
+    if (ptTimer > 140) {
+      ptState = 'hold';
+      ptTimer = 0;
+    }
+  } else if (ptState === 'hold') {
+    // Hold text visible
+    if (ptTimer > 140) {
+      // Morph to next text or scatter
+      ptTextIndex = (ptTextIndex + 1) % ptTexts.length;
+      const sample = sampleText(ptTexts[ptTextIndex]);
+      assignTargets(sample);
+      ptState = 'gather';
+      ptTimer = 50; // start mid-gather
+    }
+  }
+
+  // Update particle positions (spring/lerp toward target)
+  const lerpSpeed = ptState === 'scatter' ? 0.015 : 0.045;
+  for (const p of ptParticles) {
+    // Lerp toward target
+    p.x += (p.tx - p.x) * lerpSpeed;
+    p.y += (p.ty - p.y) * lerpSpeed;
+
+    // Slight wobble when holding
+    const wobble = ptState === 'hold' ? 0.6 : 0.2;
+    p.x += (Math.random() - 0.5) * wobble;
+    p.y += (Math.random() - 0.5) * wobble;
+
+    // Size based on proximity to target (bigger when gathered)
+    const dist = Math.hypot(p.tx - p.x, p.ty - p.y);
+    p.size = p.baseSize * (1 + (1 - Math.min(dist / 80, 1)) * 1.5);
+
+    // Draw
+    const alpha = 0.5 + (1 - Math.min(dist / 200, 1)) * 0.5;
+    ptCtx.save();
+    ptCtx.globalAlpha = alpha;
+    const grad = ptCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 2.5);
+    grad.addColorStop(0, `rgba(${p.color},1)`);
+    grad.addColorStop(0.4, `rgba(${p.color},0.6)`);
+    grad.addColorStop(1, `rgba(${p.color},0)`);
+    ptCtx.fillStyle = grad;
+    ptCtx.beginPath();
+    ptCtx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2);
+    ptCtx.fill();
+    ptCtx.restore();
+  }
+
+  requestAnimationFrame(animatePT);
+}
+
+function startParticleText() {
+  ptActive = true;
+  resizePT();
+  initPTParticles();
+  scatterParticles();
+  ptState = 'scatter';
+  ptTimer = 0;
+  ptTextIndex = 0;
+  animatePT();
+}
+
+function stopParticleText() {
+  ptActive = false;
+  ptParticles = [];
+}
+
 // ==================== Page 3: Meteor Shower Video ====================
 const meteorVideo = document.getElementById('meteorVideo');
 
@@ -570,6 +762,7 @@ function createFloatDots() {
 // ==================== Page Buttons ====================
 document.getElementById('toPage3').addEventListener('click', () => {
   stopFireworks();
+  stopParticleText();
   showPage(page3);
   startMeteors();
 });
@@ -582,6 +775,7 @@ document.getElementById('toPage4').addEventListener('click', () => {
 // ==================== Global Resize ====================
 window.addEventListener('resize', () => {
   if (fwActive) resizeFW();
+  if (ptActive) resizePT();
 });
 
 // ==================== 3D Cake (Three.js) ====================
