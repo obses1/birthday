@@ -434,10 +434,14 @@ const fwCtx = fwCanvas.getContext('2d');
 let fwActive = false;
 let fwParticles = [];
 let fwTimer = 0;
+const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
 function resizeFW() {
-  fwCanvas.width = window.innerWidth;
-  fwCanvas.height = window.innerHeight;
+  fwCanvas.width = window.innerWidth * dpr;
+  fwCanvas.height = window.innerHeight * dpr;
+  fwCanvas.style.width = window.innerWidth + 'px';
+  fwCanvas.style.height = window.innerHeight + 'px';
+  fwCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 resizeFW();
 
@@ -493,8 +497,8 @@ function autoFirework() {
   if (!fwActive) return;
   fwTimer--;
   if (fwTimer <= 0) {
-    const x = Math.random() * fwCanvas.width * 0.8 + fwCanvas.width * 0.1;
-    const y = Math.random() * fwCanvas.height * 0.5 + fwCanvas.height * 0.1;
+    const x = Math.random() * window.innerWidth * 0.8 + window.innerWidth * 0.1;
+    const y = Math.random() * window.innerHeight * 0.5 + window.innerHeight * 0.1;
     spawnFW(x, y);
     fwTimer = 20 + Math.floor(Math.random() * 40);
   }
@@ -502,8 +506,9 @@ function autoFirework() {
 
 function animateFW() {
   if (!fwActive) return;
+  fwCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   fwCtx.fillStyle = 'rgba(13, 0, 24, 0.2)';
-  fwCtx.fillRect(0, 0, fwCanvas.width, fwCanvas.height);
+  fwCtx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
   autoFirework();
 
@@ -540,32 +545,37 @@ const ptTexts = ['同桌', '生日快乐'];
 let ptTargets = []; // target positions for current text
 
 function resizePT() {
-  ptCanvas.width = window.innerWidth;
-  ptCanvas.height = window.innerHeight;
+  ptCanvas.width = window.innerWidth * dpr;
+  ptCanvas.height = window.innerHeight * dpr;
+  ptCanvas.style.width = window.innerWidth + 'px';
+  ptCanvas.style.height = window.innerHeight + 'px';
 }
 
 // Sample text to pixel positions (grid sampling for dot-matrix look)
 function sampleText(text) {
+  const W = window.innerWidth, H = window.innerHeight;
   const off = document.createElement('canvas');
-  off.width = ptCanvas.width;
-  off.height = ptCanvas.height;
+  off.width = W * dpr;
+  off.height = H * dpr;
   const offCtx = off.getContext('2d');
+  offCtx.scale(dpr, dpr);
   offCtx.fillStyle = '#fff';
-  const fontSize = Math.min(ptCanvas.width / text.length * 1.6, ptCanvas.height * 0.25);
-  offCtx.font = `bold ${fontSize}px "PingFang SC","Microsoft YaHei",sans-serif`;
+  const fontSize = Math.min(W / text.length * 1.6, H * 0.25);
+  offCtx.font = `bold ${fontSize}px "PingFang SC","Hiragino Sans GB","Noto Sans SC","Source Han Sans SC","Microsoft YaHei","WenQuanYi Micro Hei",sans-serif`;
   offCtx.textAlign = 'center';
   offCtx.textBaseline = 'middle';
-  offCtx.fillText(text, ptCanvas.width/2, ptCanvas.height/2);
+  offCtx.fillText(text, W/2, H/2, W * 0.9);
 
-  const imageData = offCtx.getImageData(0, 0, ptCanvas.width, ptCanvas.height);
+  const ow = off.width, oh = off.height;
+  const imageData = offCtx.getImageData(0, 0, ow, oh);
   const pixels = imageData.data;
-  const step = 5; // denser dots for clearer text
+  const step = 5 * dpr; // physical step to keep ~5px CSS grid
   const points = [];
-  for (let y = 0; y < ptCanvas.height; y += step) {
-    for (let x = 0; x < ptCanvas.width; x += step) {
-      const idx = (y * ptCanvas.width + x) * 4;
+  for (let y = 0; y < oh; y += step) {
+    for (let x = 0; x < ow; x += step) {
+      const idx = (y * ow + x) * 4;
       if (pixels[idx + 3] > 80) {
-        points.push({ tx: x, ty: y });
+        points.push({ tx: x / dpr, ty: y / dpr });
       }
     }
   }
@@ -586,7 +596,7 @@ function initPTParticles(text) {
   const sample = sampleText(text);
   // Only create exactly the particles needed for text — no extras
   for (let i = 0; i < sample.length; i++) {
-    ptParticles.push(new PtParticle(ptCanvas.width, ptCanvas.height));
+    ptParticles.push(new PtParticle(window.innerWidth, window.innerHeight));
   }
   assignTargets(sample);
 }
@@ -602,15 +612,16 @@ function assignTargets(sample) {
 
 function scatterParticles() {
   for (const p of ptParticles) {
-    p.tx = (Math.random() - 0.5) * ptCanvas.width * 2 + ptCanvas.width / 2;
-    p.ty = (Math.random() - 0.5) * ptCanvas.height * 2 + ptCanvas.height / 2;
+    p.tx = (Math.random() - 0.5) * window.innerWidth * 2 + window.innerWidth / 2;
+    p.ty = (Math.random() - 0.5) * window.innerHeight * 2 + window.innerHeight / 2;
   }
 }
 
 function animatePT() {
   if (!ptActive) return;
 
-  ptCtx.clearRect(0, 0, ptCanvas.width, ptCanvas.height);
+  ptCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ptCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
   ptTimer++;
 
   // State machine: hold → scatter → gather → hold (one-way, no loop)
