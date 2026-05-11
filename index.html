@@ -55,95 +55,10 @@
     position: relative;
   }
 
-  /* Mini pink particle cake */
-  .mini-cake {
-    position: relative;
+  /* Canvas cake */
+  #cakeCanvas {
+    display: block;
     margin: 0 auto 8px;
-    width: 80px;
-    height: 90px;
-  }
-
-  .mini-cake .plate {
-    position: absolute;
-    bottom: 0; left: 50%;
-    transform: translateX(-50%);
-    width: 88px; height: 10px;
-    background: rgba(255,255,255,0.25);
-    border-radius: 50%;
-    box-shadow: 0 0 16px rgba(255,180,200,0.4);
-  }
-
-  .mini-cake .body {
-    position: absolute;
-    bottom: 8px; left: 50%;
-    transform: translateX(-50%);
-    width: 68px; height: 40px;
-    background: linear-gradient(180deg, #ffd0e0 0%, #f8a0b8 100%);
-    border-radius: 8px 8px 3px 3px;
-    box-shadow: 0 3px 10px rgba(200,100,130,0.2), inset 0 2px 0 rgba(255,255,255,0.4);
-  }
-
-  .mini-cake .cream {
-    position: absolute;
-    bottom: 44px; left: 50%;
-    transform: translateX(-50%);
-    width: 72px; height: 12px;
-    background: #fff;
-    border-radius: 6px;
-  }
-
-  .mini-cake .dots {
-    position: absolute;
-    bottom: 47px; left: 50%;
-    transform: translateX(-50%);
-    display: flex; gap: 6px;
-  }
-
-  .mini-cake .dot {
-    width: 7px; height: 7px;
-    background: #ff7090;
-    border-radius: 50%;
-    box-shadow: 0 0 6px rgba(255,100,140,0.5);
-  }
-
-  .mini-cake .mcandles {
-    position: absolute;
-    bottom: 54px; left: 50%;
-    transform: translateX(-50%);
-    display: flex; gap: 10px;
-  }
-
-  .mini-cake .mcandle {
-    width: 5px; height: 22px;
-    background: linear-gradient(180deg, #ffe8f0 0%, #ffb0c8 100%);
-    border-radius: 3px 3px 2px 2px;
-    position: relative;
-    box-shadow: 0 0 6px rgba(255,150,180,0.5);
-  }
-
-  .mini-cake .mflame {
-    position: absolute;
-    top: -10px; left: 50%;
-    transform: translateX(-50%);
-    width: 8px; height: 12px;
-    background: radial-gradient(ellipse at center, #fff 0%, #ffda80 30%, #ff8020 70%, transparent 100%);
-    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-    animation: flicker 0.5s ease-in-out infinite alternate;
-  }
-
-  /* Particles around cake */
-  .cake-particle {
-    position: absolute;
-    border-radius: 50%;
-    pointer-events: none;
-    animation: cakeParticleFloat 2.5s ease-in-out infinite;
-  }
-
-  @keyframes cakeParticleFloat {
-    0%, 100% { transform: translate(0, 0) scale(1); opacity: 0; }
-    20% { opacity: 1; }
-    80% { opacity: 0.6; }
-    100% { transform: translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
   }
 
   .login-card h2 {
@@ -418,20 +333,7 @@
 <!-- ==================== Page 1: Login ==================== -->
 <div class="page" id="page1">
   <div class="login-card">
-    <div class="icon">
-    <div class="mini-cake" id="miniCake">
-      <div class="mcandles">
-        <div class="mcandle"><div class="mflame"></div></div>
-        <div class="mcandle"><div class="mflame"></div></div>
-        <div class="mcandle"><div class="mflame"></div></div>
-      </div>
-      <div class="dots">
-        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
-      </div>
-      <div class="cream"></div>
-      <div class="body"></div>
-      <div class="plate"></div>
-    </div></div>
+    <div class="icon"><canvas id="cakeCanvas" width="220" height="200"></canvas></div>
     <h2>输入四位生日，开启惊喜</h2>
     <div class="pwd-input-wrap">
       <input type="password" id="pwdInput" placeholder="请输入生日" maxlength="10" autocomplete="off">
@@ -664,31 +566,218 @@ window.addEventListener('resize', () => {
   if (fwActive) resizeFW();
 });
 
-// ==================== Cake Particles ====================
-function createCakeParticles() {
-  const cake = document.getElementById('miniCake');
-  if (!cake) return;
-  const colors = ['#ffb0c8', '#ff90b0', '#ffd0e0', '#ffc0d8', '#fff', '#ffa0c0'];
-  for (let i = 0; i < 20; i++) {
-    const p = document.createElement('div');
-    p.className = 'cake-particle';
-    p.style.left = '50%';
-    p.style.top = '50%';
-    const size = Math.random() * 4 + 2;
-    p.style.width = p.style.height = size + 'px';
-    p.style.background = colors[Math.floor(Math.random() * colors.length)];
-    p.style.boxShadow = `0 0 ${size*2}px ${p.style.background}`;
-    p.style.setProperty('--dx', (Math.random() - 0.5) * 80 + 'px');
-    p.style.setProperty('--dy', -(Math.random() * 60 + 20) + 'px');
-    p.style.animationDuration = (Math.random() * 2 + 2) + 's';
-    p.style.animationDelay = Math.random() * 2.5 + 's';
-    cake.appendChild(p);
+// ==================== Canvas Cake ====================
+const cakeCanvas = document.getElementById('cakeCanvas');
+const cakeCtx = cakeCanvas.getContext('2d');
+const CW = cakeCanvas.width;
+const CH = cakeCanvas.height;
+const cx = CW / 2;
+
+// Particle system for cake
+let cakeParticles = [];
+class CakeParticle {
+  constructor() { this.reset(true); }
+  reset(init) {
+    this.x = cx + (Math.random() - 0.5) * 60;
+    this.y = init ? 90 + Math.random() * 60 : 40;
+    this.size = Math.random() * 2.5 + 1;
+    this.speedY = -(Math.random() * 0.8 + 0.3);
+    this.speedX = (Math.random() - 0.5) * 0.4;
+    this.life = 1;
+    this.decay = Math.random() * 0.008 + 0.004;
+    const colors = ['#ffb0c8','#ff90b0','#ffd0e0','#fff','#ffa0c0','#ffc0d8'];
+    this.color = colors[Math.floor(Math.random()*colors.length)];
+  }
+  update() {
+    this.x += this.speedX + Math.sin(this.y*0.03) * 0.2;
+    this.y += this.speedY;
+    this.life -= this.decay;
+    if (this.life <= 0 || this.y < -10) this.reset(false);
+  }
+  draw(ctx) {
+    ctx.save();
+    ctx.globalAlpha = this.life;
+    ctx.fillStyle = this.color;
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = this.size * 3;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
   }
 }
+for (let i = 0; i < 30; i++) cakeParticles.push(new CakeParticle());
+
+let flameTime = 0;
+function drawCake() {
+  cakeCtx.clearRect(0, 0, CW, CH);
+
+  // --- Floating particles (behind cake) ---
+  for (const p of cakeParticles) { p.update(); p.draw(cakeCtx); }
+
+  // --- Plate glow ---
+  cakeCtx.save();
+  const plateGlow = cakeCtx.createRadialGradient(cx, 168, 0, cx, 168, 60);
+  plateGlow.addColorStop(0, 'rgba(255,180,200,0.3)');
+  plateGlow.addColorStop(1, 'rgba(255,180,200,0)');
+  cakeCtx.fillStyle = plateGlow;
+  cakeCtx.beginPath();
+  cakeCtx.ellipse(cx, 168, 60, 10, 0, 0, Math.PI*2);
+  cakeCtx.fill();
+  cakeCtx.restore();
+
+  // --- Plate ---
+  cakeCtx.save();
+  const plateGrad = cakeCtx.createLinearGradient(cx-50, 164, cx+50, 172);
+  plateGrad.addColorStop(0, 'rgba(255,255,255,0.1)');
+  plateGrad.addColorStop(0.5, 'rgba(255,255,255,0.3)');
+  plateGrad.addColorStop(1, 'rgba(255,255,255,0.1)');
+  cakeCtx.fillStyle = plateGrad;
+  cakeCtx.beginPath();
+  cakeCtx.ellipse(cx, 170, 52, 7, 0, 0, Math.PI*2);
+  cakeCtx.fill();
+  cakeCtx.strokeStyle = 'rgba(255,255,255,0.25)';
+  cakeCtx.lineWidth = 1;
+  cakeCtx.stroke();
+  cakeCtx.restore();
+
+  // --- Cake body (3D effect) ---
+  const bodyTop = 120;
+  const bodyH = 44;
+  const bodyW = 82;
+  // Main body
+  cakeCtx.save();
+  const bodyGrad = cakeCtx.createLinearGradient(cx-bodyW/2, bodyTop, cx+bodyW/2, bodyTop+bodyH);
+  bodyGrad.addColorStop(0, '#ffb8d0');
+  bodyGrad.addColorStop(0.2, '#ffd0e0');
+  bodyGrad.addColorStop(0.5, '#ffc0d8');
+  bodyGrad.addColorStop(0.8, '#f898b8');
+  bodyGrad.addColorStop(1, '#e878a0');
+  cakeCtx.fillStyle = bodyGrad;
+  cakeCtx.beginPath();
+  cakeCtx.moveTo(cx-bodyW/2+8, bodyTop);
+  cakeCtx.lineTo(cx+bodyW/2-8, bodyTop);
+  cakeCtx.quadraticCurveTo(cx+bodyW/2, bodyTop, cx+bodyW/2, bodyTop+8);
+  cakeCtx.lineTo(cx+bodyW/2-2, bodyTop+bodyH-2);
+  cakeCtx.quadraticCurveTo(cx+bodyW/2-2, bodyTop+bodyH+4, cx+bodyW/2-6, bodyTop+bodyH+4);
+  cakeCtx.lineTo(cx-bodyW/2+6, bodyTop+bodyH+4);
+  cakeCtx.quadraticCurveTo(cx-bodyW/2+2, bodyTop+bodyH+4, cx-bodyW/2+2, bodyTop+bodyH-2);
+  cakeCtx.lineTo(cx-bodyW/2, bodyTop+8);
+  cakeCtx.quadraticCurveTo(cx-bodyW/2, bodyTop, cx-bodyW/2+8, bodyTop);
+  cakeCtx.fill();
+  // Top shine
+  const shineGrad = cakeCtx.createLinearGradient(cx-30, bodyTop, cx-30, bodyTop+bodyH);
+  shineGrad.addColorStop(0, 'rgba(255,255,255,0.3)');
+  shineGrad.addColorStop(0.3, 'rgba(255,255,255,0.05)');
+  shineGrad.addColorStop(1, 'rgba(255,255,255,0)');
+  cakeCtx.fillStyle = shineGrad;
+  cakeCtx.fill();
+  cakeCtx.restore();
+
+  // --- Cream frosting ---
+  const creamY = bodyTop - 2;
+  cakeCtx.save();
+  // White cream with wave
+  cakeCtx.fillStyle = '#fff';
+  cakeCtx.shadowColor = 'rgba(255,255,255,0.5)';
+  cakeCtx.shadowBlur = 6;
+  cakeCtx.beginPath();
+  cakeCtx.moveTo(cx-bodyW/2-2, creamY);
+  // Wavy top
+  for (let i = 0; i < 8; i++) {
+    const wx = cx-bodyW/2-2 + (bodyW+4)/8 * i;
+    const wy = creamY + (i%2===0 ? 0 : -5);
+    cakeCtx.lineTo(wx + (bodyW+4)/16, wy);
+  }
+  cakeCtx.lineTo(cx+bodyW/2+2, creamY);
+  cakeCtx.lineTo(cx+bodyW/2, creamY+10);
+  cakeCtx.lineTo(cx+bodyW/2-2, creamY+12);
+  cakeCtx.quadraticCurveTo(cx+bodyW/2-2, creamY+16, cx+bodyW/2-5, creamY+16);
+  cakeCtx.lineTo(cx-bodyW/2+5, creamY+16);
+  cakeCtx.quadraticCurveTo(cx-bodyW/2+2, creamY+16, cx-bodyW/2+2, creamY+12);
+  cakeCtx.lineTo(cx-bodyW/2, creamY+10);
+  cakeCtx.closePath();
+  cakeCtx.fill();
+  cakeCtx.shadowBlur = 0;
+  cakeCtx.restore();
+
+  // --- Pink decorations on cream ---
+  const dotsY = creamY + 8;
+  for (let i = 0; i < 5; i++) {
+    const dx = cx - 28 + i * 14;
+    cakeCtx.save();
+    const dotGrad = cakeCtx.createRadialGradient(dx, dotsY, 0, dx, dotsY, 4);
+    dotGrad.addColorStop(0, '#ff90b8');
+    dotGrad.addColorStop(1, '#e87090');
+    cakeCtx.fillStyle = dotGrad;
+    cakeCtx.shadowColor = 'rgba(255,100,140,0.5)';
+    cakeCtx.shadowBlur = 4;
+    cakeCtx.beginPath();
+    cakeCtx.arc(dx, dotsY, 3.5, 0, Math.PI*2);
+    cakeCtx.fill();
+    cakeCtx.restore();
+  }
+
+  // --- Candles ---
+  const candlePositions = [cx-20, cx, cx+20];
+  flameTime += 0.05;
+  for (const cpos of candlePositions) {
+    // Candle body
+    const cTop = creamY - 32;
+    const cGrad = cakeCtx.createLinearGradient(cpos-3, cTop, cpos+3, creamY);
+    cGrad.addColorStop(0, '#fff0f5');
+    cGrad.addColorStop(0.5, '#ffe0ec');
+    cGrad.addColorStop(1, '#ffb8d0');
+    cakeCtx.fillStyle = cGrad;
+    cakeCtx.fillRect(cpos-3, cTop, 6, 32);
+    cakeCtx.strokeStyle = 'rgba(255,200,220,0.6)';
+    cakeCtx.lineWidth = 0.5;
+    cakeCtx.strokeRect(cpos-3, cTop, 6, 32);
+
+    // Flame
+    const flickerX = Math.sin(flameTime * 3 + cpos) * 1.5;
+    const flickerY = Math.cos(flameTime * 4 + cpos) * 1;
+    const fy = cTop + flickerY;
+    const fx = cpos + flickerX;
+    // Outer flame
+    const fGradOuter = cakeCtx.createRadialGradient(fx, fy-4, 0, fx, fy-4, 8);
+    fGradOuter.addColorStop(0, 'rgba(255,240,200,0.9)');
+    fGradOuter.addColorStop(0.4, 'rgba(255,180,60,0.7)');
+    fGradOuter.addColorStop(0.7, 'rgba(255,120,30,0.3)');
+    fGradOuter.addColorStop(1, 'rgba(255,80,10,0)');
+    cakeCtx.fillStyle = fGradOuter;
+    cakeCtx.beginPath();
+    cakeCtx.ellipse(fx, fy-4, 6, 10, 0, 0, Math.PI*2);
+    cakeCtx.fill();
+    // Inner bright core
+    const fGradInner = cakeCtx.createRadialGradient(fx, fy-3, 0, fx, fy-3, 4);
+    fGradInner.addColorStop(0, 'rgba(255,255,255,1)');
+    fGradInner.addColorStop(0.5, 'rgba(255,240,200,0.8)');
+    fGradInner.addColorStop(1, 'rgba(255,180,60,0)');
+    cakeCtx.fillStyle = fGradInner;
+    cakeCtx.beginPath();
+    cakeCtx.ellipse(fx, fy-3, 3, 6, 0, 0, Math.PI*2);
+    cakeCtx.fill();
+
+    // Flame glow
+    cakeCtx.save();
+    cakeCtx.globalCompositeOperation = 'lighter';
+    const glowGrad = cakeCtx.createRadialGradient(fx, fy-4, 0, fx, fy-4, 16);
+    glowGrad.addColorStop(0, 'rgba(255,200,120,0.4)');
+    glowGrad.addColorStop(1, 'rgba(255,200,120,0)');
+    cakeCtx.fillStyle = glowGrad;
+    cakeCtx.beginPath();
+    cakeCtx.arc(fx, fy-4, 16, 0, Math.PI*2);
+    cakeCtx.fill();
+    cakeCtx.restore();
+  }
+
+  requestAnimationFrame(drawCake);
+}
+drawCake();
 
 // ==================== Init ====================
 createFloatDots();
-createCakeParticles();
 pwdInput.focus();
 </script>
 </body>
