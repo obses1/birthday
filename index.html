@@ -354,7 +354,7 @@
 
 <!-- ==================== Page 3: Meteor Shower ==================== -->
 <div class="page hidden" id="page3">
-  <video class="bg-video" id="meteorVideo" src="meteor_bg.mp4" autoplay loop muted playsinline></video>
+  <video class="bg-video" id="meteorVideo" src="meteor_bg.mp4" autoplay loop muted playsinline webkit-playsinline x5-video-player-type="h5" x5-video-player-fullscreen="true" x5-video-orientation="portraint" preload="auto"></video>
   <div class="meteor-text">
     <p>（流星雨背景 · 文字后续添加）</p>
   </div>
@@ -521,7 +521,20 @@ const meteorVideo = document.getElementById('meteorVideo');
 
 function startMeteors() {
   meteorVideo.currentTime = 0;
-  meteorVideo.play();
+  // WeChat mobile may block autoplay, handle promise rejection
+  const playPromise = meteorVideo.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(() => {
+      // On mobile browsers that block autoplay, retry on next user tap
+      const retryPlay = () => {
+        meteorVideo.play().catch(() => {});
+        document.removeEventListener('touchstart', retryPlay);
+        document.removeEventListener('click', retryPlay);
+      };
+      document.addEventListener('touchstart', retryPlay, { once: true });
+      document.addEventListener('click', retryPlay, { once: true });
+    });
+  }
 }
 
 function stopMeteors() {
