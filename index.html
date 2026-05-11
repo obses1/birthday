@@ -52,14 +52,98 @@
   }
 
   .login-card .icon {
-    font-size: 64px;
-    margin-bottom: 16px;
-    animation: bounce 2s ease-in-out infinite;
+    position: relative;
   }
 
-  @keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-16px); }
+  /* Mini pink particle cake */
+  .mini-cake {
+    position: relative;
+    margin: 0 auto 8px;
+    width: 80px;
+    height: 90px;
+  }
+
+  .mini-cake .plate {
+    position: absolute;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 88px; height: 10px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 50%;
+    box-shadow: 0 0 16px rgba(255,180,200,0.4);
+  }
+
+  .mini-cake .body {
+    position: absolute;
+    bottom: 8px; left: 50%;
+    transform: translateX(-50%);
+    width: 68px; height: 40px;
+    background: linear-gradient(180deg, #ffd0e0 0%, #f8a0b8 100%);
+    border-radius: 8px 8px 3px 3px;
+    box-shadow: 0 3px 10px rgba(200,100,130,0.2), inset 0 2px 0 rgba(255,255,255,0.4);
+  }
+
+  .mini-cake .cream {
+    position: absolute;
+    bottom: 44px; left: 50%;
+    transform: translateX(-50%);
+    width: 72px; height: 12px;
+    background: #fff;
+    border-radius: 6px;
+  }
+
+  .mini-cake .dots {
+    position: absolute;
+    bottom: 47px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 6px;
+  }
+
+  .mini-cake .dot {
+    width: 7px; height: 7px;
+    background: #ff7090;
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(255,100,140,0.5);
+  }
+
+  .mini-cake .mcandles {
+    position: absolute;
+    bottom: 54px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 10px;
+  }
+
+  .mini-cake .mcandle {
+    width: 5px; height: 22px;
+    background: linear-gradient(180deg, #ffe8f0 0%, #ffb0c8 100%);
+    border-radius: 3px 3px 2px 2px;
+    position: relative;
+    box-shadow: 0 0 6px rgba(255,150,180,0.5);
+  }
+
+  .mini-cake .mflame {
+    position: absolute;
+    top: -10px; left: 50%;
+    transform: translateX(-50%);
+    width: 8px; height: 12px;
+    background: radial-gradient(ellipse at center, #fff 0%, #ffda80 30%, #ff8020 70%, transparent 100%);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    animation: flicker 0.5s ease-in-out infinite alternate;
+  }
+
+  /* Particles around cake */
+  .cake-particle {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: cakeParticleFloat 2.5s ease-in-out infinite;
+  }
+
+  @keyframes cakeParticleFloat {
+    0%, 100% { transform: translate(0, 0) scale(1); opacity: 0; }
+    20% { opacity: 1; }
+    80% { opacity: 0.6; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0.3); opacity: 0; }
   }
 
   .login-card h2 {
@@ -334,10 +418,23 @@
 <!-- ==================== Page 1: Login ==================== -->
 <div class="page" id="page1">
   <div class="login-card">
-    <div class="icon">🎀</div>
-    <h2>欢迎来到我的世界</h2>
+    <div class="icon">
+    <div class="mini-cake" id="miniCake">
+      <div class="mcandles">
+        <div class="mcandle"><div class="mflame"></div></div>
+        <div class="mcandle"><div class="mflame"></div></div>
+        <div class="mcandle"><div class="mflame"></div></div>
+      </div>
+      <div class="dots">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      </div>
+      <div class="cream"></div>
+      <div class="body"></div>
+      <div class="plate"></div>
+    </div></div>
+    <h2>输入四位生日，开启惊喜</h2>
     <div class="pwd-input-wrap">
-      <input type="password" id="pwdInput" placeholder="请输入密码" maxlength="10" autocomplete="off">
+      <input type="password" id="pwdInput" placeholder="请输入生日" maxlength="10" autocomplete="off">
       <button id="loginBtn">→</button>
     </div>
     <div class="login-error" id="loginError"></div>
@@ -567,8 +664,31 @@ window.addEventListener('resize', () => {
   if (fwActive) resizeFW();
 });
 
+// ==================== Cake Particles ====================
+function createCakeParticles() {
+  const cake = document.getElementById('miniCake');
+  if (!cake) return;
+  const colors = ['#ffb0c8', '#ff90b0', '#ffd0e0', '#ffc0d8', '#fff', '#ffa0c0'];
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    p.className = 'cake-particle';
+    p.style.left = '50%';
+    p.style.top = '50%';
+    const size = Math.random() * 4 + 2;
+    p.style.width = p.style.height = size + 'px';
+    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+    p.style.boxShadow = `0 0 ${size*2}px ${p.style.background}`;
+    p.style.setProperty('--dx', (Math.random() - 0.5) * 80 + 'px');
+    p.style.setProperty('--dy', -(Math.random() * 60 + 20) + 'px');
+    p.style.animationDuration = (Math.random() * 2 + 2) + 's';
+    p.style.animationDelay = Math.random() * 2.5 + 's';
+    cake.appendChild(p);
+  }
+}
+
 // ==================== Init ====================
 createFloatDots();
+createCakeParticles();
 pwdInput.focus();
 </script>
 </body>
