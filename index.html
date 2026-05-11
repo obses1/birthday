@@ -235,72 +235,21 @@
     transform: translateY(-2px);
   }
 
-  /* ---- Cake (CSS Art on Page 4) ---- */
-  .cake {
-    position: relative;
-    margin: 24px auto 0;
-    width: 120px;
-    height: 130px;
+  /* ---- 3D Particle Cake (Page 4) ---- */
+  #particleCake4 {
+    display: block;
+    margin: 16px auto 0;
+    width: 280px;
+    height: 280px;
   }
 
-  .cake-plate {
-    position: absolute;
-    bottom: 0; left: 50%;
-    transform: translateX(-50%);
-    width: 130px; height: 12px;
-    background: rgba(255,255,255,0.12);
-    border-radius: 50%;
-    box-shadow: 0 0 20px rgba(255,200,240,0.2);
-  }
-
-  .cake-body {
-    position: absolute;
-    bottom: 10px; left: 50%;
-    transform: translateX(-50%);
-    width: 100px; height: 56px;
-    background: linear-gradient(180deg, #f9d8e6 0%, #f0c0d0 100%);
-    border-radius: 10px 10px 4px 4px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 2px 0 rgba(255,255,255,0.4);
-  }
-
-  .cake-cream {
-    position: absolute;
-    bottom: 62px; left: 50%;
-    transform: translateX(-50%);
-    width: 106px; height: 14px;
-    background: #fff;
-    border-radius: 7px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    animation: creamDrip 3s ease-in-out infinite;
-  }
-  @keyframes creamDrip { 0%,100%{height:14px;} 50%{height:18px;} }
-
-  .candles {
-    position: absolute; bottom: 72px; left: 50%;
-    transform: translateX(-50%);
-    display: flex; gap: 14px;
-  }
-
-  .candle {
-    width: 8px; height: 28px;
-    background: linear-gradient(180deg, #ffe0f0 0%, #ffc8d8 100%);
-    border-radius: 4px 4px 2px 2px;
-    position: relative;
-    box-shadow: 0 0 8px rgba(255,180,200,0.4);
-  }
-
-  .flame {
-    position: absolute;
-    top: -14px; left: 50%;
-    transform: translateX(-50%);
-    width: 12px; height: 16px;
-    background: radial-gradient(ellipse at center, #fff 0%, #ffda80 25%, #ff9030 70%, transparent 100%);
-    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-    animation: flicker 0.6s ease-in-out infinite alternate;
-  }
-  @keyframes flicker {
-    0% { transform: translateX(-50%) scale(1,1) rotate(-2deg); opacity:0.9; }
-    100% { transform: translateX(-50%) scale(1.1,0.9) rotate(2deg); opacity:1; }
+  .wish-hint {
+    z-index: 10;
+    margin-top: 8px;
+    color: rgba(255,255,255,0.55);
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    animation: fadeInUp 1.5s ease 1s both;
   }
 
   /* ---- Floating Light Dots (Page 4) ---- */
@@ -380,16 +329,8 @@
     <div class="blessing-text">
       <p>（祝福的话，后续添加）</p>
     </div>
-    <div class="cake">
-      <div class="candles">
-        <div class="candle"><div class="flame"></div></div>
-        <div class="candle"><div class="flame"></div></div>
-        <div class="candle"><div class="flame"></div></div>
-      </div>
-      <div class="cake-cream"></div>
-      <div class="cake-body"></div>
-      <div class="cake-plate"></div>
-    </div>
+    <div id="particleCake4"></div>
+    <p class="wish-hint">🎂 吹气或点击蛋糕许愿</p>
   </div>
 </div>
 
@@ -750,6 +691,7 @@ document.getElementById('toPage3').addEventListener('click', () => {
 document.getElementById('toPage4').addEventListener('click', () => {
   stopMeteors();
   showPage(page4);
+  startCake4();
 });
 
 // ==================== Global Resize ====================
@@ -945,6 +887,290 @@ function animate3D() {
   renderer.render(scene, camera);
 }
 animate3D();
+
+// ==================== Page 4: 3D Particle Cake ====================
+const cake4Container = document.getElementById('particleCake4');
+const cake4Scene = new THREE.Scene();
+const cake4Camera = new THREE.PerspectiveCamera(30, 1, 0.1, 20);
+cake4Camera.position.set(0, 0.6, 3.8);
+cake4Camera.lookAt(0, -0.1, 0);
+
+const cake4Renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+cake4Renderer.setSize(280, 280);
+cake4Renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+cake4Container.appendChild(cake4Renderer.domElement);
+
+// Glow texture helper
+function makeGlow(r, g, b, size) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+  grad.addColorStop(0, `rgba(${r},${g},${b},1)`);
+  grad.addColorStop(0.12, `rgba(${r},${g},${b},1)`);
+  grad.addColorStop(0.5, `rgba(${r},${g},${b},0.25)`);
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+  return new THREE.CanvasTexture(c);
+}
+
+const texPink = makeGlow(255, 130, 175, 64);
+const texWhite = makeGlow(255, 255, 255, 64);
+const texYellow = makeGlow(255, 210, 80, 32);
+const texPale = makeGlow(255, 185, 205, 64);
+const texHotPink = makeGlow(255, 100, 150, 48);
+
+// Particle helpers
+function cylSurf(r, y0, y1, n, cx, cz) {
+  const pts = [], h = y1 - y0;
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const t = Math.random();
+    const y = t < 0.18 ? y0 + Math.random() * h * 0.06 :
+              t < 0.36 ? y1 - Math.random() * h * 0.06 :
+              y0 + Math.random() * h;
+    pts.push(cx + Math.cos(a) * r, y, cz + Math.sin(a) * r);
+  }
+  return pts;
+}
+
+function disc(r, y, n, ir, cx, cz) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const rad = (ir || 0) + Math.sqrt(Math.random()) * (r - (ir || 0));
+    pts.push(cx + Math.cos(a) * rad, y, cz + Math.sin(a) * rad);
+  }
+  return pts;
+}
+
+function ring(r, y, n) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    pts.push(Math.cos(a) * r, y, Math.sin(a) * r);
+  }
+  return pts;
+}
+
+function flamePts(cx, y0, cz, n) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = Math.random() * 0.05;
+    const y = y0 + Math.random() * 0.28;
+    const s = Math.max(0.08, 1 - (y - y0) / 0.28);
+    pts.push(cx + Math.cos(a) * r * s, y, cz + Math.sin(a) * r * s);
+  }
+  return pts;
+}
+
+const cakePartsArr = []; // { mesh, base: Float32Array } for scatter animation
+
+function mkPoints(positions, color, size, tex) {
+  const geo = new THREE.BufferGeometry();
+  const arr = new Float32Array(positions);
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+  const mat = new THREE.PointsMaterial({
+    color, size, map: tex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true,
+  });
+  const mesh = new THREE.Points(geo, mat);
+  cakePartsArr.push({ mesh, base: new Float32Array(arr) });
+  return mesh;
+}
+
+// Build cake
+const cake4Group = new THREE.Group();
+const flameGeos = [];
+const flamePartsArr = []; // separate tracking for candle body particles
+
+// Plate
+cake4Group.add(mkPoints(disc(0.95, -0.82, 500, 0, 0, 0), '#ffc8e0', 0.06, texPale));
+
+// Bottom layer
+cake4Group.add(mkPoints(cylSurf(0.72, -0.8, -0.28, 1300, 0, 0), '#ff85b5', 0.05, texPink));
+cake4Group.add(mkPoints(ring(0.72, -0.28, 200), '#ffb0d0', 0.045, texPale));
+cake4Group.add(mkPoints(ring(0.72, -0.8, 200), '#ffb0d0', 0.045, texPale));
+
+// Frosting
+cake4Group.add(mkPoints(ring(0.74, -0.26, 180), '#ffffff', 0.05, texWhite));
+
+// Top layer
+cake4Group.add(mkPoints(cylSurf(0.52, -0.26, 0.12, 900, 0, 0), '#ff98c0', 0.045, texPink));
+cake4Group.add(mkPoints(disc(0.52, 0.12, 250, 0, 0, 0), '#ffc8d8', 0.04, texPale));
+cake4Group.add(mkPoints(ring(0.52, 0.12, 140), '#ffb0d0', 0.04, texPale));
+
+// Top frosting
+cake4Group.add(mkPoints(ring(0.54, 0.14, 130), '#ffffff', 0.045, texWhite));
+
+// 4 Candles + Flames
+const cAngles = [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
+cAngles.forEach((a) => {
+  const cx = Math.cos(a) * 0.28, cz = Math.sin(a) * 0.28;
+  // Candle body
+  const candlePts = cylSurf(0.035, 0.12, 0.48, 120, cx, cz);
+  const cMesh = mkPoints(candlePts, '#fff5f0', 0.04, texWhite);
+  cake4Group.add(cMesh);
+  flamePartsArr.push(cakePartsArr[cakePartsArr.length - 1]);
+  // Flame
+  const fGeo = new THREE.BufferGeometry();
+  const fPts = flamePts(cx, 0.48, cz, 100);
+  fGeo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(fPts), 3));
+  const fMat = new THREE.PointsMaterial({
+    color: '#ffe080', size: 0.06, map: texYellow, blending: THREE.AdditiveBlending,
+    depthWrite: false, transparent: true,
+  });
+  const fMesh = new THREE.Points(fGeo, fMat);
+  fMesh.userData = { cx, cz, baseY: 0.48 };
+  cake4Group.add(fMesh);
+  flameGeos.push(fMesh);
+});
+
+cake4Scene.add(cake4Group);
+
+// --- Wish / Blow Detection ---
+let cake4Active = false;
+let wishTriggered = false;
+let scatterStart = 0;
+const SCATTER_DURATION = 2.8; // seconds
+
+function triggerWish() {
+  if (wishTriggered) return;
+  wishTriggered = true;
+  scatterStart = performance.now();
+
+  // Hide hint
+  const hint = document.querySelector('.wish-hint');
+  if (hint) hint.style.opacity = '0';
+
+  // Extinguish flames — fade out
+  flameGeos.forEach(f => { f.material.opacity = 0; f.material.transparent = true; });
+
+  // Precompute scatter targets
+  cakePartsArr.forEach(part => {
+    const base = part.base;
+    const targets = new Float32Array(base.length);
+    for (let i = 0; i < base.length; i += 3) {
+      const bx = base[i], by = base[i + 1], bz = base[i + 2];
+      const dist = Math.sqrt(bx * bx + by * by + bz * bz) + 0.001;
+      const dx = bx / dist + (Math.random() - 0.5) * 1.0;
+      const dy = by / dist + Math.random() * 0.5 + 0.4;
+      const dz = bz / dist + (Math.random() - 0.5) * 1.0;
+      const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      const range = 3.5 + Math.random() * 5;
+      targets[i] = bx + (dx / len) * range;
+      targets[i + 1] = by + (dy / len) * range;
+      targets[i + 2] = bz + (dz / len) * range;
+    }
+    part.targets = targets;
+  });
+}
+
+function animateCake4() {
+  if (!cake4Active) return;
+  requestAnimationFrame(animateCake4);
+  const t = performance.now() * 0.001;
+
+  if (wishTriggered) {
+    const elapsed = (performance.now() - scatterStart) / 1000;
+    const progress = Math.min(elapsed / SCATTER_DURATION, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+
+    // Scatter all cake particles
+    cakePartsArr.forEach(part => {
+      if (!part.targets) return;
+      const arr = part.mesh.geometry.attributes.position.array;
+      const base = part.base;
+      const targets = part.targets;
+      for (let i = 0; i < arr.length; i += 3) {
+        arr[i] = base[i] + (targets[i] - base[i]) * ease;
+        arr[i + 1] = base[i + 1] + (targets[i + 1] - base[i + 1]) * ease;
+        arr[i + 2] = base[i + 2] + (targets[i + 2] - base[i + 2]) * ease;
+      }
+      part.mesh.geometry.attributes.position.needsUpdate = true;
+      // Fade out gradually
+      part.mesh.material.opacity = 1 - ease * 0.85;
+    });
+
+    // Slow rotation during scatter
+    cake4Group.rotation.y += 0.002 * (1 - progress);
+  } else {
+    // Normal rotation
+    cake4Group.rotation.y += 0.004;
+
+    // Animate flames
+    flameGeos.forEach((f) => {
+      const { cx, cz, baseY } = f.userData;
+      const arr = f.geometry.attributes.position.array;
+      for (let i = 0; i < arr.length; i += 3) {
+        const a = Math.random() * Math.PI * 2;
+        const r = Math.random() * 0.05;
+        const yOff = Math.random() * 0.28;
+        const s = Math.max(0.08, 1 - yOff / 0.28);
+        arr[i] = cx + Math.cos(a) * r * s;
+        arr[i + 1] = baseY + yOff + Math.sin(t * 15 + i) * 0.015;
+        arr[i + 2] = cz + Math.sin(a) * r * s;
+      }
+      f.geometry.attributes.position.needsUpdate = true;
+    });
+  }
+
+  cake4Renderer.render(cake4Scene, cake4Camera);
+}
+
+function startCake4() {
+  cake4Active = true;
+  wishTriggered = false;
+  scatterStart = 0;
+  cake4Group.rotation.y = 0;
+
+  // Reset all particles to base positions
+  cakePartsArr.forEach(part => {
+    part.targets = null;
+    const arr = part.mesh.geometry.attributes.position.array;
+    arr.set(part.base);
+    part.mesh.geometry.attributes.position.needsUpdate = true;
+    part.mesh.material.opacity = 1;
+  });
+  // Reset flames
+  flameGeos.forEach(f => { f.material.opacity = 1; f.visible = true; });
+  // Reset hint
+  const hint = document.querySelector('.wish-hint');
+  if (hint) hint.style.opacity = '';
+
+  animateCake4();
+  setupCake4Mic();
+}
+
+function stopCake4() { cake4Active = false; }
+
+// Click to wish
+cake4Container.addEventListener('click', () => triggerWish());
+
+// Mic blow detection
+async function setupCake4Mic() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioCtx.createMediaStreamSource(stream);
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+    const data = new Uint8Array(analyser.frequencyBinCount);
+
+    function checkBlow() {
+      if (wishTriggered) { stream.getTracks().forEach(t => t.stop()); return; }
+      analyser.getByteFrequencyData(data);
+      const avg = data.reduce((a, b) => a + b, 0) / data.length;
+      if (avg > 48) triggerWish();
+      if (!wishTriggered) requestAnimationFrame(checkBlow);
+    }
+    checkBlow();
+  } catch (e) {
+    // Mic not available — click fallback works
+  }
+}
 
 // ==================== Init ====================
 createFloatDots();
