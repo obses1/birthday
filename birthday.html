@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生日快乐</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Serif SC", Georgia, serif;
+    background: #1a0020;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ============ Page Container ============ */
+  .page {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.8s ease, visibility 0.8s ease;
+    z-index: 10;
+  }
+  .page.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  canvas.bg-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    z-index: 0;
+  }
+
+  /* ============ Page 1: Login ============ */
+  #page1 {
+    background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 30%, #f48fb1 60%, #f06292 100%);
+  }
+
+  .login-card {
+    text-align: center;
+    z-index: 10;
+  }
+
+  .login-card .icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+    animation: bounce 2s ease-in-out infinite;
+  }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-16px); }
+  }
+
+  .login-card h2 {
+    font-size: 1.5rem;
+    color: #fff;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-shadow: 0 0 20px rgba(255,255,255,0.5);
+    margin-bottom: 32px;
+  }
+
+  .pwd-input-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.25);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 40px;
+    padding: 6px 6px 6px 24px;
+    border: 1px solid rgba(255,255,255,0.4);
+    box-shadow: 0 4px 24px rgba(240,100,150,0.2);
+  }
+
+  .pwd-input-wrap input {
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 1.2rem;
+    color: #fff;
+    width: 160px;
+    letter-spacing: 0.3em;
+    font-family: inherit;
+  }
+  .pwd-input-wrap input::placeholder {
+    color: rgba(255,255,255,0.55);
+    letter-spacing: 0.1em;
+  }
+
+  .pwd-input-wrap button {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.35);
+    color: #fff;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .pwd-input-wrap button:hover {
+    background: rgba(255,255,255,0.5);
+  }
+
+  .login-error {
+    margin-top: 14px;
+    color: #ff6b8a;
+    font-size: 0.9rem;
+    height: 22px;
+    text-shadow: 0 0 8px rgba(255,100,130,0.4);
+  }
+
+  /* ============ Page 2: Fireworks + Greeting ============ */
+  #page2 { background: radial-gradient(ellipse at center, #2d1040 0%, #0d0018 100%); }
+
+  .greeting-text {
+    z-index: 10;
+    text-align: center;
+    animation: fadeInUp 1s ease;
+  }
+
+  .greeting-text h1 {
+    font-size: clamp(2.2rem, 6vw, 3.2rem);
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-shadow:
+      0 0 20px rgba(255,180,220,0.8),
+      0 0 40px rgba(255,150,200,0.5),
+      0 0 80px rgba(255,120,180,0.3);
+    animation: titleGlow 2s ease-in-out infinite alternate;
+  }
+
+  @keyframes titleGlow {
+    0% { text-shadow: 0 0 20px rgba(255,180,220,0.6), 0 0 40px rgba(255,150,200,0.3); }
+    100% { text-shadow: 0 0 30px rgba(255,200,240,0.9), 0 0 60px rgba(255,150,200,0.6), 0 0 100px rgba(255,120,200,0.4); }
+  }
+
+  @keyframes fadeInUp {
+    0% { opacity: 0; transform: translateY(30px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ============ Page 3: Meteor Shower ============ */
+  #page3 { background: linear-gradient(180deg, #0a0a1a 0%, #1a1030 50%, #0d1028 100%); }
+
+  .meteor-text {
+    z-index: 10;
+    text-align: center;
+    color: rgba(255,255,255,0.9);
+    font-size: 1.1rem;
+    line-height: 2.2;
+    letter-spacing: 0.06em;
+    text-shadow:
+      0 0 10px rgba(200,200,255,0.6),
+      0 0 2px rgba(0,0,0,0.8);
+    animation: fadeInUp 1s ease;
+    background: rgba(0,0,0,0.25);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border-radius: 12px;
+    padding: 16px 24px;
+    margin: 0 16px;
+  }
+
+  /* ============ Page 4: Cake + Blessing ============ */
+  #page4 {
+    background: radial-gradient(ellipse at center, #2a1838 0%, #120720 100%);
+  }
+
+  .final-content {
+    z-index: 10;
+    text-align: center;
+    animation: fadeInUp 1s ease;
+  }
+
+  .blessing-text {
+    margin: 20px 0;
+    font-size: 1.1rem;
+    line-height: 2.2;
+    color: rgba(255,255,255,0.82);
+    text-shadow: 0 0 8px rgba(255,200,230,0.3);
+    letter-spacing: 0.06em;
+  }
+
+  /* ---- Next Button ---- */
+  .next-btn {
+    z-index: 10;
+    margin-top: 40px;
+    padding: 12px 40px;
+    border-radius: 40px;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #fff;
+    font-size: 1.05rem;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: inherit;
+    box-shadow: 0 0 20px rgba(200,150,255,0.15);
+  }
+  .next-btn:hover {
+    background: rgba(255,255,255,0.2);
+    border-color: rgba(255,255,255,0.5);
+    box-shadow: 0 0 32px rgba(200,150,255,0.3);
+    transform: translateY(-2px);
+  }
+
+  /* ---- Cake (CSS Art on Page 4) ---- */
+  .cake {
+    position: relative;
+    margin: 24px auto 0;
+    width: 120px;
+    height: 130px;
+  }
+
+  .cake-plate {
+    position: absolute;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 130px; height: 12px;
+    background: rgba(255,255,255,0.12);
+    border-radius: 50%;
+    box-shadow: 0 0 20px rgba(255,200,240,0.2);
+  }
+
+  .cake-body {
+    position: absolute;
+    bottom: 10px; left: 50%;
+    transform: translateX(-50%);
+    width: 100px; height: 56px;
+    background: linear-gradient(180deg, #f9d8e6 0%, #f0c0d0 100%);
+    border-radius: 10px 10px 4px 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15), inset 0 2px 0 rgba(255,255,255,0.4);
+  }
+
+  .cake-cream {
+    position: absolute;
+    bottom: 62px; left: 50%;
+    transform: translateX(-50%);
+    width: 106px; height: 14px;
+    background: #fff;
+    border-radius: 7px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    animation: creamDrip 3s ease-in-out infinite;
+  }
+  @keyframes creamDrip { 0%,100%{height:14px;} 50%{height:18px;} }
+
+  .candles {
+    position: absolute; bottom: 72px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: 14px;
+  }
+
+  .candle {
+    width: 8px; height: 28px;
+    background: linear-gradient(180deg, #ffe0f0 0%, #ffc8d8 100%);
+    border-radius: 4px 4px 2px 2px;
+    position: relative;
+    box-shadow: 0 0 8px rgba(255,180,200,0.4);
+  }
+
+  .flame {
+    position: absolute;
+    top: -14px; left: 50%;
+    transform: translateX(-50%);
+    width: 12px; height: 16px;
+    background: radial-gradient(ellipse at center, #fff 0%, #ffda80 25%, #ff9030 70%, transparent 100%);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    animation: flicker 0.6s ease-in-out infinite alternate;
+  }
+  @keyframes flicker {
+    0% { transform: translateX(-50%) scale(1,1) rotate(-2deg); opacity:0.9; }
+    100% { transform: translateX(-50%) scale(1.1,0.9) rotate(2deg); opacity:1; }
+  }
+
+  /* ---- Floating Light Dots (Page 4) ---- */
+  .float-dot {
+    position: absolute;
+    z-index: 5;
+    border-radius: 50%;
+    animation: rise linear infinite;
+  }
+  @keyframes rise {
+    0% { transform: translateY(0) scale(1); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 0.5; }
+    100% { transform: translateY(-100vh) scale(0.3); opacity: 0; }
+  }
+
+  <!-- ---- Meteor text area ---- -->
+  .meteor-placeholder {
+    margin-top: 12px;
+    padding: 16px 24px;
+    border: 1px dashed rgba(255,255,255,0.2);
+    border-radius: 12px;
+    color: rgba(255,255,255,0.45);
+    font-size: 0.95rem;
+  }
+
+  /* ---- Video Background ---- */
+  .bg-video {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: cover;
+    z-index: 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== Page 1: Login ==================== -->
+<div class="page" id="page1">
+  <div class="login-card">
+    <div class="icon">🎀</div>
+    <h2>欢迎来到我的世界</h2>
+    <div class="pwd-input-wrap">
+      <input type="password" id="pwdInput" placeholder="请输入密码" maxlength="10" autocomplete="off">
+      <button id="loginBtn">→</button>
+    </div>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ==================== Page 2: Fireworks ==================== -->
+<div class="page hidden" id="page2">
+  <canvas class="bg-canvas" id="fireworkCanvas"></canvas>
+  <div class="greeting-text">
+    <h1>同桌，生日快乐</h1>
+  </div>
+  <button class="next-btn" id="toPage3">再点一次</button>
+</div>
+
+<!-- ==================== Page 3: Meteor Shower ==================== -->
+<div class="page hidden" id="page3">
+  <video class="bg-video" id="meteorVideo" src="meteor_bg.mp4" autoplay loop muted playsinline></video>
+  <div class="meteor-text">
+    <p>（流星雨背景 · 文字后续添加）</p>
+  </div>
+  <button class="next-btn" id="toPage4">再点一次</button>
+</div>
+
+<!-- ==================== Page 4: Cake + Blessing ==================== -->
+<div class="page hidden" id="page4">
+  <div class="final-content">
+    <div class="blessing-text">
+      <p>（祝福的话，后续添加）</p>
+    </div>
+    <div class="cake">
+      <div class="candles">
+        <div class="candle"><div class="flame"></div></div>
+        <div class="candle"><div class="flame"></div></div>
+        <div class="candle"><div class="flame"></div></div>
+      </div>
+      <div class="cake-cream"></div>
+      <div class="cake-body"></div>
+      <div class="cake-plate"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== Page Navigation ====================
+const page1 = document.getElementById('page1');
+const page2 = document.getElementById('page2');
+const page3 = document.getElementById('page3');
+const page4 = document.getElementById('page4');
+
+let activeCanvas = null;
+
+function showPage(page) {
+  [page1, page2, page3, page4].forEach(p => p.classList.add('hidden'));
+  page.classList.remove('hidden');
+}
+
+// ==================== Page 1: Login Logic ====================
+const pwdInput = document.getElementById('pwdInput');
+const loginBtn = document.getElementById('loginBtn');
+const loginError = document.getElementById('loginError');
+
+function doLogin() {
+  if (pwdInput.value === '0601') {
+    loginError.textContent = '';
+    showPage(page2);
+    startFireworks();
+  } else {
+    loginError.textContent = '密码错误，再试一次吧 ✨';
+    pwdInput.value = '';
+    pwdInput.focus();
+  }
+}
+
+loginBtn.addEventListener('click', doLogin);
+pwdInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') doLogin();
+});
+
+// ==================== Page 2: Fireworks ====================
+const fwCanvas = document.getElementById('fireworkCanvas');
+const fwCtx = fwCanvas.getContext('2d');
+let fwActive = false;
+let fwParticles = [];
+let fwTimer = 0;
+
+function resizeFW() {
+  fwCanvas.width = window.innerWidth;
+  fwCanvas.height = window.innerHeight;
+}
+resizeFW();
+
+class FireworkParticle {
+  constructor(x, y, color) {
+    this.x = x;
+    this.y = y;
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 4 + 2;
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed;
+    this.life = 1;
+    this.decay = Math.random() * 0.012 + 0.006;
+    this.color = color;
+    this.size = Math.random() * 2 + 1;
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy += 0.03;
+    this.vx *= 0.99;
+    this.life -= this.decay;
+  }
+  draw(ctx) {
+    ctx.save();
+    ctx.globalAlpha = this.life;
+    const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2.5);
+    grad.addColorStop(0, '#fff');
+    grad.addColorStop(0.35, this.color);
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size * 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function spawnFW(x, y) {
+  const colors = [
+    'rgb(255,120,180)', 'rgb(255,180,100)', 'rgb(255,220,80)',
+    'rgb(180,130,255)', 'rgb(100,200,255)', 'rgb(255,140,200)',
+    'rgb(255,200,120)', 'rgb(140,255,200)',
+  ];
+  const c = colors[Math.floor(Math.random() * colors.length)];
+  const count = 50 + Math.floor(Math.random() * 60);
+  for (let i = 0; i < count; i++) {
+    fwParticles.push(new FireworkParticle(x, y, c));
+  }
+}
+
+function autoFirework() {
+  if (!fwActive) return;
+  fwTimer--;
+  if (fwTimer <= 0) {
+    const x = Math.random() * fwCanvas.width * 0.8 + fwCanvas.width * 0.1;
+    const y = Math.random() * fwCanvas.height * 0.5 + fwCanvas.height * 0.1;
+    spawnFW(x, y);
+    fwTimer = 20 + Math.floor(Math.random() * 40);
+  }
+}
+
+function animateFW() {
+  if (!fwActive) return;
+  fwCtx.fillStyle = 'rgba(13, 0, 24, 0.2)';
+  fwCtx.fillRect(0, 0, fwCanvas.width, fwCanvas.height);
+
+  autoFirework();
+
+  for (let i = fwParticles.length - 1; i >= 0; i--) {
+    fwParticles[i].update();
+    fwParticles[i].draw(fwCtx);
+    if (fwParticles[i].life <= 0) fwParticles.splice(i, 1);
+  }
+  requestAnimationFrame(animateFW);
+}
+
+function startFireworks() {
+  fwActive = true;
+  resizeFW();
+  fwParticles = [];
+  fwTimer = 0;
+  animateFW();
+}
+
+function stopFireworks() {
+  fwActive = false;
+  fwParticles = [];
+}
+
+// ==================== Page 3: Meteor Shower Video ====================
+const meteorVideo = document.getElementById('meteorVideo');
+
+function startMeteors() {
+  meteorVideo.currentTime = 0;
+  meteorVideo.play();
+}
+
+function stopMeteors() {
+  meteorVideo.pause();
+}
+
+// ==================== Page 4: Floating Dots ====================
+let floatDots = [];
+
+function createFloatDots() {
+  const container = page4;
+  for (let i = 0; i < 25; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'float-dot';
+    dot.style.left = Math.random() * 100 + '%';
+    dot.style.bottom = -(Math.random() * 50 + 10) + 'px';
+    dot.style.width = dot.style.height = (Math.random() * 5 + 3) + 'px';
+    dot.style.background =
+      `radial-gradient(circle, rgba(255,${200 + Math.random()*55},${150 + Math.random()*90},0.9) 0%, rgba(255,180,140,0.3) 50%, transparent 70%)`;
+    dot.style.boxShadow = `0 0 ${Math.random()*12+8}px rgba(255,200,160,0.4)`;
+    dot.style.animationDuration = (Math.random() * 8 + 10) + 's';
+    dot.style.animationDelay = (Math.random() * 10) + 's';
+    container.appendChild(dot);
+    floatDots.push(dot);
+  }
+}
+
+// ==================== Page Buttons ====================
+document.getElementById('toPage3').addEventListener('click', () => {
+  stopFireworks();
+  showPage(page3);
+  startMeteors();
+});
+
+document.getElementById('toPage4').addEventListener('click', () => {
+  stopMeteors();
+  showPage(page4);
+});
+
+// ==================== Global Resize ====================
+window.addEventListener('resize', () => {
+  if (fwActive) resizeFW();
+});
+
+// ==================== Init ====================
+createFloatDots();
+pwdInput.focus();
+</script>
+</body>
+</html>
