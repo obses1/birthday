@@ -440,7 +440,7 @@
 
 <!-- ==================== Page 3: Meteor Shower ==================== -->
 <div class="page hidden" id="page3">
-  <video class="bg-video" id="meteorVideo" src="meteor_bg.mp4" autoplay loop muted playsinline webkit-playsinline x5-video-player-type="h5" x5-video-player-fullscreen="true" x5-video-orientation="portraint" preload="auto"></video>
+  <video class="bg-video" id="meteorVideo" src="meteor_bg.mp4" autoplay loop muted playsinline webkit-playsinline x5-video-player-type="h5-page" preload="auto"></video>
   <div class="meteor-text">
     <p class="meteor-line">愿你的21岁，像这一刻的流星一样闪耀</p>
     <p class="meteor-line">好事追着你，幸福围着你</p>
@@ -738,18 +738,20 @@ const meteorVideo = document.getElementById('meteorVideo');
 
 function startMeteors() {
   meteorVideo.currentTime = 0;
-  meteorVideo.load();
-  const playPromise = meteorVideo.play();
-  if (playPromise !== undefined) {
-    playPromise.catch(() => {
-      const retryPlay = () => {
-        meteorVideo.play().catch(() => {});
-        document.removeEventListener('touchstart', retryPlay);
-        document.removeEventListener('click', retryPlay);
-      };
-      document.addEventListener('touchstart', retryPlay, { once: true });
-      document.addEventListener('click', retryPlay, { once: true });
-    });
+  const playVideo = () => {
+    const p = meteorVideo.play();
+    if (p !== undefined) {
+      p.catch(() => {
+        document.addEventListener('touchstart', playVideo, { once: true });
+        document.addEventListener('click', playVideo, { once: true });
+      });
+    }
+  };
+  if (meteorVideo.readyState >= 2) {
+    playVideo();
+  } else {
+    meteorVideo.load();
+    meteorVideo.addEventListener('canplay', playVideo, { once: true });
   }
 }
 
