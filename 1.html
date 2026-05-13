@@ -1163,7 +1163,7 @@ async function setupCake4Mic() {
       if (wishTriggered) { stream.getTracks().forEach(t => t.stop()); return; }
       analyser.getByteFrequencyData(data);
       const avg = data.reduce((a, b) => a + b, 0) / data.length;
-      if (avg > 48) triggerWish();
+      if (avg > 20) triggerWish();
       if (!wishTriggered) requestAnimationFrame(checkBlow);
     }
     checkBlow();
