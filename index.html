@@ -738,11 +738,10 @@ const meteorVideo = document.getElementById('meteorVideo');
 
 function startMeteors() {
   meteorVideo.currentTime = 0;
-  // WeChat mobile may block autoplay, handle promise rejection
+  meteorVideo.load();
   const playPromise = meteorVideo.play();
   if (playPromise !== undefined) {
     playPromise.catch(() => {
-      // On mobile browsers that block autoplay, retry on next user tap
       const retryPlay = () => {
         meteorVideo.play().catch(() => {});
         document.removeEventListener('touchstart', retryPlay);
