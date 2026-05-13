@@ -278,6 +278,106 @@
     opacity: 1;
   }
 
+  /* ---- Card Open Button ---- */
+  .card-open-btn {
+    position: fixed;
+    top: 50%; left: 50%;
+    z-index: 15;
+    padding: 14px 48px;
+    border-radius: 40px;
+    border: 1px solid rgba(255,215,0,0.5);
+    background: linear-gradient(180deg,
+      rgba(255,215,0,0.18) 0%,
+      rgba(255,180,0,0.06) 100%);
+    color: #ffd700;
+    font-size: 1.1rem;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    font-family: inherit;
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(20px) perspective(600px) rotateX(2deg);
+    transition: opacity 0.6s ease, transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.5s ease;
+    pointer-events: none;
+    box-shadow:
+      0 4px 6px rgba(0,0,0,0.3),
+      0 8px 20px rgba(0,0,0,0.2),
+      0 0 20px rgba(255,200,80,0.2),
+      inset 0 1px 0 rgba(255,255,255,0.08);
+    text-shadow: 0 0 12px rgba(255,200,80,0.5);
+    white-space: nowrap;
+  }
+  .card-open-btn.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) perspective(600px) rotateX(0deg);
+    pointer-events: auto;
+    animation: btnFloat 3s ease-in-out infinite;
+  }
+  .card-open-btn.show:hover {
+    transform: translate(-50%, calc(-50% - 6px)) perspective(600px) rotateX(0deg) scale(1.04);
+    box-shadow:
+      0 12px 18px rgba(0,0,0,0.35),
+      0 16px 36px rgba(0,0,0,0.25),
+      0 0 40px rgba(255,200,80,0.45),
+      0 0 72px rgba(255,180,60,0.25),
+      inset 0 1px 0 rgba(255,255,255,0.12);
+  }
+
+  @keyframes btnFloat {
+    0%, 100% { transform: translate(-50%, -50%) perspective(600px) rotateX(0deg); }
+    50% { transform: translate(-50%, calc(-50% - 5px)) perspective(600px) rotateX(0deg); }
+  }
+
+  /* ---- Card Overlay ---- */
+  .card-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+  }
+  .card-overlay.show {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .card-box {
+    background: linear-gradient(135deg, #2a1838 0%, #1a1030 100%);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 16px;
+    width: min(85vw, 400px);
+    min-height: 300px;
+    padding: 32px 28px;
+    position: relative;
+    box-shadow: 0 0 60px rgba(255,180,100,0.2);
+  }
+
+  .card-content {
+    color: rgba(255,255,255,0.85);
+    font-size: 1rem;
+    line-height: 2;
+    letter-spacing: 0.06em;
+  }
+
+  .card-close-btn {
+    position: absolute;
+    top: 12px; right: 16px;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.5);
+    font-size: 1.3rem;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .card-close-btn:hover { color: #fff; }
+
   /* ---- Floating Light Dots (Page 4) ---- */
   .float-dot {
     position: absolute;
@@ -351,15 +451,27 @@
 
 <!-- ==================== Page 4: Cake + Blessing ==================== -->
 <div class="page hidden" id="page4">
+  <canvas class="bg-canvas" id="celebrationCanvas"></canvas>
   <div class="final-content">
     <div class="blessing-text">
       <p>现在闭上眼睛来许个愿吧</p>
     </div>
+        <button class="card-open-btn" id="cardOpenBtn">🎉 打开贺卡</button>
     <div id="particleCake4"></div>
     <p class="wish-hint">🎂 许愿完成后请吹气</p>
     <p class="wish-success" id="wishSuccess">🎂 许愿成功</p>
   </div>
 </div>
+
+
+  <div class="card-overlay" id="cardOverlay">
+    <div class="card-box">
+      <button class="card-close-btn" id="cardCloseBtn">✕</button>
+      <div class="card-content">
+        <p>贺卡内容稍后添加...</p>
+      </div>
+    </div>
+  </div>
 
 <script type="module">
 // ==================== Page Navigation ====================
@@ -1031,7 +1143,6 @@ let wishPhase = 'idle'; // idle | blowOut | showText | scatter
 let phaseStart = 0;
 const BLOWOUT_DURATION = 1.5;
 const SHOWTEXT_DURATION = 3.0;
-const SCATTER_DURATION = 2.8;
 
 function triggerWish() {
   if (wishPhase !== 'idle') return;
@@ -1042,24 +1153,7 @@ function triggerWish() {
   const hint = document.querySelector('.wish-hint');
   if (hint) hint.style.opacity = '0';
 
-  // Precompute scatter targets
-  cakePartsArr.forEach(part => {
-    const base = part.base;
-    const targets = new Float32Array(base.length);
-    for (let i = 0; i < base.length; i += 3) {
-      const bx = base[i], by = base[i + 1], bz = base[i + 2];
-      const dist = Math.sqrt(bx * bx + by * by + bz * bz) + 0.001;
-      const dx = bx / dist + (Math.random() - 0.5) * 1.0;
-      const dy = by / dist + Math.random() * 0.5 + 0.4;
-      const dz = bz / dist + (Math.random() - 0.5) * 1.0;
-      const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      const range = 4 + Math.random() * 8;
-      targets[i] = bx + (dx / len) * range;
-      targets[i + 1] = by + (dy / len) * range;
-      targets[i + 2] = bz + (dz / len) * range;
-    }
-    part.targets = targets;
-  });
+
 }
 
 function animateCake4() {
@@ -1117,38 +1211,19 @@ function animateCake4() {
       phaseStart = performance.now();
       const el = document.getElementById('wishSuccess');
       if (el) el.classList.add('show');
+      startCelebration();
     }
   } else if (wishPhase === 'showText') {
     const elapsed = (performance.now() - phaseStart) / 1000;
     cake4Group.rotation.y += 0.002;
 
     if (elapsed >= SHOWTEXT_DURATION) {
-      wishPhase = 'scatter';
-      phaseStart = performance.now();
-      const el = document.getElementById('wishSuccess');
-      if (el) el.classList.remove('show');
+      wishPhase = 'done';
+      const btn = document.getElementById('cardOpenBtn');
+      if (btn) btn.classList.add('show');
     }
-  } else if (wishPhase === 'scatter') {
-    const elapsed = (performance.now() - phaseStart) / 1000;
-    const progress = Math.min(elapsed / SCATTER_DURATION, 1);
-    const ease = 1 - Math.pow(1 - progress, 3);
-
-    // Scatter all cake particles
-    cakePartsArr.forEach(part => {
-      if (!part.targets) return;
-      const arr = part.mesh.geometry.attributes.position.array;
-      const base = part.base;
-      const targets = part.targets;
-      for (let i = 0; i < arr.length; i += 3) {
-        arr[i] = base[i] + (targets[i] - base[i]) * ease;
-        arr[i + 1] = base[i + 1] + (targets[i + 1] - base[i + 1]) * ease;
-        arr[i + 2] = base[i + 2] + (targets[i + 2] - base[i + 2]) * ease;
-      }
-      part.mesh.geometry.attributes.position.needsUpdate = true;
-      part.mesh.material.opacity = 1 - ease * 0.85;
-    });
-
-    cake4Group.rotation.y += 0.002 * (1 - progress);
+  } else if (wishPhase === 'done') {
+    cake4Group.rotation.y += 0.003;
   }
 
   cake4Renderer.render(cake4Scene, cake4Camera);
@@ -1162,7 +1237,6 @@ function startCake4() {
 
   // Reset all particles to base positions
   cakePartsArr.forEach(part => {
-    part.targets = null;
     const arr = part.mesh.geometry.attributes.position.array;
     arr.set(part.base);
     part.mesh.geometry.attributes.position.needsUpdate = true;
@@ -1176,12 +1250,31 @@ function startCake4() {
   // Reset wish text
   const el = document.getElementById('wishSuccess');
   if (el) el.classList.remove('show');
+  // Reset card button
+  const cardBtn = document.getElementById('cardOpenBtn');
+  if (cardBtn) cardBtn.classList.remove('show');
+  // Reset card overlay
+  const overlay = document.getElementById('cardOverlay');
+  if (overlay) overlay.classList.remove('show');
 
+  stopCelebration();
   animateCake4();
   setupCake4Mic();
 }
 
-function stopCake4() { cake4Active = false; }
+function stopCake4() { cake4Active = false; stopCelebration(); }
+
+// Card open/close
+document.addEventListener('click', (e) => {
+  if (e.target.id === 'cardOpenBtn') {
+    const overlay = document.getElementById('cardOverlay');
+    if (overlay) overlay.classList.add('show');
+  }
+  if (e.target.id === 'cardCloseBtn' || e.target.id === 'cardOverlay') {
+    const overlay = document.getElementById('cardOverlay');
+    if (overlay) overlay.classList.remove('show');
+  }
+});
 
 // Click to wish
 cake4Container.addEventListener('click', () => triggerWish());
@@ -1201,13 +1294,102 @@ async function setupCake4Mic() {
       if (wishPhase !== 'idle') { stream.getTracks().forEach(t => t.stop()); return; }
       analyser.getByteFrequencyData(data);
       const avg = data.reduce((a, b) => a + b, 0) / data.length;
-      if (avg > 25) triggerWish();
+      if (avg > 20) triggerWish();
       if (wishPhase === 'idle') requestAnimationFrame(checkBlow);
     }
     checkBlow();
   } catch (e) {
     // Mic not available — click fallback works
   }
+}
+
+// ==================== Page 4: Celebration Particles ====================
+const celebCanvas = document.getElementById('celebrationCanvas');
+const celebCtx = celebCanvas.getContext('2d');
+let celebActive = false;
+let celebParticles = [];
+const celebColors = [
+  'rgb(255,130,175)', 'rgb(255,150,195)', 'rgb(255,110,160)',
+  'rgb(255,100,180)', 'rgb(255,160,200)', 'rgb(255,140,185)',
+  'rgb(195,120,255)', 'rgb(175,100,240)', 'rgb(210,140,255)',
+  'rgb(185,110,250)', 'rgb(200,130,255)', 'rgb(160,90,230)',
+];
+
+function resizeCeleb() {
+  celebCanvas.width = window.innerWidth * dpr;
+  celebCanvas.height = window.innerHeight * dpr;
+  celebCanvas.style.width = window.innerWidth + 'px';
+  celebCanvas.style.height = window.innerHeight + 'px';
+}
+
+class CelebParticle {
+  constructor(initial) {
+    this.x = Math.random() * window.innerWidth;
+    this.y = initial ? Math.random() * window.innerHeight : window.innerHeight + Math.random() * 50;
+    this.size = 3.5 + Math.random() * 6;
+    this.speedY = 0.25 + Math.random() * 0.65;
+    this.speedX = (Math.random() - 0.5) * 0.35;
+    this.phase = Math.random() * Math.PI * 2;
+    this.freq = 0.008 + Math.random() * 0.018;
+    this.color = celebColors[Math.floor(Math.random() * celebColors.length)];
+    this.twinkleSpd = 0.015 + Math.random() * 0.04;
+    this.twinklePh = Math.random() * Math.PI * 2;
+  }
+  reset() {
+    this.x = Math.random() * window.innerWidth;
+    this.y = window.innerHeight + Math.random() * 50;
+    this.size = 3.5 + Math.random() * 6;
+    this.speedY = 0.25 + Math.random() * 0.65;
+    this.speedX = (Math.random() - 0.5) * 0.35;
+    this.color = celebColors[Math.floor(Math.random() * celebColors.length)];
+  }
+}
+
+function spawnCelebParticles(n) {
+  for (let i = 0; i < n; i++) celebParticles.push(new CelebParticle(true));
+}
+
+function animateCeleb() {
+  if (!celebActive) return;
+
+  celebCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  celebCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+  for (const p of celebParticles) {
+    p.y -= p.speedY;
+    p.x += Math.sin(p.phase) * 0.4 + p.speedX;
+    p.phase += p.freq;
+    p.twinklePh += p.twinkleSpd;
+    if (p.y < -30) p.reset();
+
+    const alpha = 0.25 + 0.5 * (0.5 + 0.5 * Math.sin(p.twinklePh));
+    const grad = celebCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 2.5);
+    grad.addColorStop(0, p.color);
+    grad.addColorStop(0.25, p.color);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    celebCtx.globalAlpha = alpha;
+    celebCtx.fillStyle = grad;
+    celebCtx.beginPath();
+    celebCtx.arc(p.x, p.y, p.size * 2.5, 0, Math.PI * 2);
+    celebCtx.fill();
+  }
+  celebCtx.globalAlpha = 1;
+
+  requestAnimationFrame(animateCeleb);
+}
+
+function startCelebration() {
+  if (celebActive) return;
+  celebActive = true;
+  resizeCeleb();
+  celebParticles = [];
+  spawnCelebParticles(70);
+  animateCeleb();
+}
+
+function stopCelebration() {
+  celebActive = false;
+  celebParticles = [];
 }
 
 // ==================== Init ====================
