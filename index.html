@@ -405,14 +405,13 @@
   /* ---- Video Background ---- */
   .bg-video {
     position: fixed;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    min-width: 100%;
-    min-height: 100%;
-    width: auto;
-    height: auto;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
     z-index: 0;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
   }
 </style>
 </head>
@@ -737,29 +736,11 @@ function stopParticleText() {
 const meteorVideo = document.getElementById('meteorVideo');
 
 function startMeteors() {
-  // Force X5 to rebuild video pipeline by re-attaching to DOM
-  const parent = meteorVideo.parentNode;
-  const next = meteorVideo.nextSibling;
-  parent.removeChild(meteorVideo);
-  parent.insertBefore(meteorVideo, next);
   meteorVideo.currentTime = 0;
-
-  const playVideo = () => {
-    const p = meteorVideo.play();
-    if (p !== undefined) {
-      p.catch(() => {
-        document.addEventListener('touchstart', playVideo, { once: true });
-        document.addEventListener('click', playVideo, { once: true });
-      });
-    }
-  };
-
-  if (meteorVideo.readyState >= 2) {
-    playVideo();
-  } else {
-    meteorVideo.load();
-    meteorVideo.addEventListener('canplay', playVideo, { once: true });
-  }
+  meteorVideo.play().catch(() => {
+    document.addEventListener('touchstart', () => meteorVideo.play().catch(()=>{}), { once: true });
+    document.addEventListener('click', () => meteorVideo.play().catch(()=>{}), { once: true });
+  });
 }
 
 function stopMeteors() {
