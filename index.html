@@ -499,6 +499,7 @@ function doLogin() {
     loggedIn = true;
     loginError.textContent = '';
     showPage(page2);
+    meteorVideo.load(); // preload while on page 2
     startFireworks();
     startParticleText();
   } else {
@@ -746,7 +747,7 @@ function resizeMeteorCanvas() {
 
 function drawMeteorFrame() {
   meteorRafId = requestAnimationFrame(drawMeteorFrame);
-  if (meteorVideo.readyState >= 2 && !meteorVideo.paused) {
+  if (meteorVideo.readyState >= 2) {
     meteorCtx.drawImage(meteorVideo, 0, 0, meteorCanvas.width, meteorCanvas.height);
   }
 }
@@ -754,10 +755,18 @@ function drawMeteorFrame() {
 function startMeteors() {
   resizeMeteorCanvas();
   meteorVideo.currentTime = 0;
-  meteorVideo.play().catch(() => {
-    document.addEventListener('touchstart', () => meteorVideo.play().catch(()=>{}), { once: true });
-    document.addEventListener('click', () => meteorVideo.play().catch(()=>{}), { once: true });
-  });
+  const playVideo = () => {
+    meteorVideo.play().catch(() => {
+      document.addEventListener('touchstart', () => meteorVideo.play().catch(()=>{}), { once: true });
+      document.addEventListener('click', () => meteorVideo.play().catch(()=>{}), { once: true });
+    });
+  };
+  if (meteorVideo.readyState >= 2) {
+    playVideo();
+  } else {
+    meteorVideo.load();
+    meteorVideo.addEventListener('canplay', playVideo, { once: true });
+  }
   drawMeteorFrame();
 }
 
@@ -769,6 +778,9 @@ function stopMeteors() {
 meteorVideo.addEventListener('ended', () => {
   meteorVideo.currentTime = 0;
   meteorVideo.play().catch(() => {});
+});
+meteorVideo.addEventListener('waiting', () => {
+  meteorVideo.addEventListener('canplay', () => { meteorVideo.play().catch(() => {}); }, { once: true });
 });
 
 // ==================== Page 4: Floating Dots ====================
