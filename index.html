@@ -367,6 +367,20 @@
     letter-spacing: 0.06em;
   }
 
+  .typing-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1.05em;
+    background: rgba(255,255,255,0.75);
+    vertical-align: text-bottom;
+    margin-left: 1px;
+    animation: cursorBlink 0.8s step-end infinite;
+  }
+  @keyframes cursorBlink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+  }
+
   .card-close-btn {
     position: absolute;
     top: 12px; right: 16px;
@@ -468,7 +482,9 @@
     <div class="card-box">
       <button class="card-close-btn" id="cardCloseBtn">✕</button>
       <div class="card-content">
-        <p>贺卡内容稍后添加...</p>
+        <p>晓娜：</p>
+        <p>这是我们认识的又一个年头了。从课桌旁到各自的城市，时间跑得很快，但有些东西一直没变——比如每年这一天，总要认认真真跟你说一句：生日快乐。</p>
+        <p>21岁了，愿你依然保持那份让人羡慕的率真和热情，愿你想做的事都能做成，想去的地方都能抵达，想爱的人都在身边。</p>
       </div>
     </div>
   </div>
@@ -1983,15 +1999,85 @@ function startCake4() {
 
 function stopCake4() { cake4Active = false; stopCelebration(); }
 
-// Card open/close
+// Card open/close with typewriter effect
+const cardContent = document.querySelector('.card-content');
+const cardParagraphs = [
+  '晓娜：',
+  '这是我们认识的又一个年头了。从课桌旁到各自的城市，时间跑得很快，但有些东西一直没变——比如每年这一天，总要认认真真跟你说一句：生日快乐。',
+  '21岁了，愿你依然保持那份让人羡慕的率真和热情，愿你想做的事都能做成，想去的地方都能抵达，想爱的人都在身边。'
+];
+let typewriterTimer = null;
+let cardTyping = false;
+
+function startTypewriter() {
+  if (cardTyping) return;
+  cardTyping = true;
+  cardContent.innerHTML = '';
+  let paraIdx = 0;
+  let charIdx = 0;
+
+  function typeNext() {
+    if (!cardTyping) return;
+    if (paraIdx >= cardParagraphs.length) {
+      // Done
+      const cursor = document.querySelector('.typing-cursor');
+      if (cursor) cursor.remove();
+      cardTyping = false;
+      return;
+    }
+
+    const text = cardParagraphs[paraIdx];
+    // Ensure current paragraph exists
+    let para = cardContent.querySelectorAll('p')[paraIdx];
+    if (!para) {
+      para = document.createElement('p');
+      cardContent.appendChild(para);
+    }
+
+    if (charIdx < text.length) {
+      para.textContent += text[charIdx];
+      charIdx++;
+      const delay = '，。！？；'.includes(text[charIdx - 1]) ? 180 :
+                    text[charIdx - 1] === '—' ? 250 : 55 + Math.random() * 40;
+      typewriterTimer = setTimeout(typeNext, delay);
+    } else {
+      paraIdx++;
+      charIdx = 0;
+      typewriterTimer = setTimeout(typeNext, 250);
+    }
+  }
+
+  // Add cursor element
+  const cursor = document.createElement('span');
+  cursor.className = 'typing-cursor';
+  cardContent.appendChild(cursor);
+
+  typewriterTimer = setTimeout(typeNext, 350);
+}
+
+function stopTypewriter(showFull) {
+  cardTyping = false;
+  if (typewriterTimer) { clearTimeout(typewriterTimer); typewriterTimer = null; }
+  if (showFull) {
+    cardContent.innerHTML = cardParagraphs.map(p => `<p>${p}</p>`).join('');
+  }
+}
+
 document.addEventListener('click', (e) => {
   if (e.target.id === 'cardOpenBtn') {
     const overlay = document.getElementById('cardOverlay');
-    if (overlay) overlay.classList.add('show');
+    if (overlay) {
+      overlay.classList.add('show');
+      stopTypewriter(true); // in case it was open before
+      startTypewriter();
+    }
   }
   if (e.target.id === 'cardCloseBtn' || e.target.id === 'cardOverlay') {
     const overlay = document.getElementById('cardOverlay');
-    if (overlay) overlay.classList.remove('show');
+    if (overlay) {
+      overlay.classList.remove('show');
+      stopTypewriter(true);
+    }
   }
 });
 
