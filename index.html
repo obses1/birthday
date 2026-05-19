@@ -518,7 +518,9 @@ const fwCanvas = document.getElementById('fireworkCanvas');
 const fwCtx = fwCanvas.getContext('2d');
 let fwActive = false;
 let fwParticles = [];
+let fwRockets = [];
 let fwTimer = 0;
+let fwGrandTimer = 0;
 const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
 function resizeFW() {
@@ -530,27 +532,102 @@ function resizeFW() {
 }
 resizeFW();
 
+// ---- Rocket: rising launch trail ----
+class Rocket {
+  constructor(x, targetY, color, isGrand) {
+    this.x = x;
+    this.y = window.innerHeight + 10;
+    this.targetX = x + (Math.random() - 0.5) * 60;
+    this.targetY = targetY;
+    this.vy = -(4 + Math.random() * 7);
+    this.vx = (Math.random() - 0.5) * 0.8;
+    this.trail = [];
+    this.maxTrail = 14;
+    this.alive = true;
+    this.color = color;
+    this.isGrand = isGrand || false;
+    this.size = isGrand ? 2.5 : 1.5;
+  }
+  update() {
+    this.trail.push({ x: this.x, y: this.y });
+    if (this.trail.length > this.maxTrail) this.trail.shift();
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy -= 0.02; // slight acceleration upward
+    if (this.y <= this.targetY) {
+      this.alive = false;
+      if (Math.random() < 0.3) spawnRingFW(this.x, this.y, this.color);
+      else spawnFW(this.x, this.y, this.color, this.isGrand);
+    }
+  }
+  draw(ctx) {
+    if (this.trail.length < 2) return;
+    // Glowing trail
+    ctx.beginPath();
+    ctx.moveTo(this.trail[0].x, this.trail[0].y);
+    for (let i = 1; i < this.trail.length; i++) {
+      ctx.lineTo(this.trail[i].x, this.trail[i].y);
+    }
+    // Trail gradient
+    const len = this.trail.length;
+    const last = this.trail[len - 1];
+    const first = this.trail[0];
+    const grad = ctx.createLinearGradient(first.x, first.y, last.x, last.y);
+    grad.addColorStop(0, 'rgba(255,200,150,0)');
+    grad.addColorStop(0.5, 'rgba(255,180,100,0.4)');
+    grad.addColorStop(1, 'rgba(255,255,220,0.8)');
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = this.size;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    // Head glow
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size * 3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,240,0.9)';
+    ctx.fill();
+  }
+}
+
+// ---- Firework Particle (enhanced with trail + crackle) ----
 class FireworkParticle {
-  constructor(x, y, color) {
+  constructor(x, y, color, speedMult) {
     this.x = x;
     this.y = y;
+    this.prevX = x;
+    this.prevY = y;
     const angle = Math.random() * Math.PI * 2;
-    const speed = Math.random() * 4 + 2;
+    const speed = (Math.random() * 2.5 + 1.2) * (speedMult || 1);
     this.vx = Math.cos(angle) * speed;
     this.vy = Math.sin(angle) * speed;
     this.life = 1;
-    this.decay = Math.random() * 0.012 + 0.006;
+    this.decay = Math.random() * 0.008 + 0.004;
     this.color = color;
     this.size = Math.random() * 2 + 1;
+    this.canCrackle = Math.random() < 0.18;
+    this.crackled = false;
   }
   update() {
+    this.prevX = this.x;
+    this.prevY = this.y;
     this.x += this.vx;
     this.y += this.vy;
-    this.vy += 0.03;
-    this.vx *= 0.99;
+    this.vy += 0.02;
+    this.vx *= 0.995;
     this.life -= this.decay;
   }
   draw(ctx) {
+    // Trailing line from previous position
+    const dx = this.x - this.prevX;
+    const dy = this.y - this.prevY;
+    if (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01) {
+      ctx.beginPath();
+      ctx.moveTo(this.prevX, this.prevY);
+      ctx.lineTo(this.x, this.y);
+      ctx.strokeStyle = `rgba(255,255,255,${this.life * 0.25})`;
+      ctx.lineWidth = this.size * 0.7;
+      ctx.stroke();
+    }
+    // Glow dot
     ctx.save();
     ctx.globalAlpha = this.life;
     const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2.5);
@@ -565,28 +642,114 @@ class FireworkParticle {
   }
 }
 
-function spawnFW(x, y) {
-  const colors = [
-    'rgb(255,120,180)', 'rgb(255,180,100)', 'rgb(255,220,80)',
-    'rgb(180,130,255)', 'rgb(100,200,255)', 'rgb(255,140,200)',
-    'rgb(255,200,120)', 'rgb(140,255,200)',
-  ];
-  const c = colors[Math.floor(Math.random() * colors.length)];
-  const count = 50 + Math.floor(Math.random() * 60);
+function spawnFW(x, y, color, isGrand) {
+  if (!color) {
+    const colors = [
+      'rgb(255,120,180)', 'rgb(255,180,100)', 'rgb(255,220,80)',
+      'rgb(180,130,255)', 'rgb(100,200,255)', 'rgb(255,140,200)',
+      'rgb(255,200,120)', 'rgb(140,255,200)',
+    ];
+    color = colors[Math.floor(Math.random() * colors.length)];
+  }
+  const count = isGrand ? 120 + Math.floor(Math.random() * 80) : 50 + Math.floor(Math.random() * 60);
+  const speedMult = isGrand ? 1.5 : 1;
   for (let i = 0; i < count; i++) {
-    fwParticles.push(new FireworkParticle(x, y, c));
+    fwParticles.push(new FireworkParticle(x, y, color, speedMult));
   }
 }
 
+// ---- Ring-shaped burst ----
+function spawnRingFW(x, y, color) {
+  if (!color) {
+    color = ['rgb(255,200,120)', 'rgb(255,220,150)', 'rgb(180,200,255)', 'rgb(255,180,200)'][Math.floor(Math.random() * 4)];
+  }
+  const rings = Math.random() < 0.4 ? 2 : 1;
+  for (let r = 0; r < rings; r++) {
+    setTimeout(() => {
+      const count = 35 + Math.floor(Math.random() * 35);
+      const speed = 2 + Math.random() * 3;
+      const angleOffset = Math.random() * Math.PI * 2;
+      for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2 + angleOffset;
+        const p = new FireworkParticle(x, y, color, 1);
+        p.vx = Math.cos(angle) * speed;
+        p.vy = Math.sin(angle) * speed;
+        p.size = 1.3 + Math.random() * 1.4;
+        fwParticles.push(p);
+      }
+    }, r * 80);
+  }
+  // Center sparkles
+  for (let i = 0; i < 15; i++) {
+    const p = new FireworkParticle(x, y, '#ffffff', 0.6);
+    fwParticles.push(p);
+  }
+}
+
+// ---- Grand finale ----
+function spawnGrandFinale() {
+  const G = window.innerWidth;
+  const H = window.innerHeight;
+  const colors = ['rgb(255,220,120)', 'rgb(255,240,200)', 'rgb(255,200,150)', 'rgb(255,255,220)', 'rgb(255,180,130)'];
+  const rocketCount = 3 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < rocketCount; i++) {
+    setTimeout(() => {
+      const rx = G * 0.15 + Math.random() * G * 0.7;
+      const ry = H * 0.1 + Math.random() * H * 0.44;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      fwRockets.push(new Rocket(rx, ry, color, true));
+    }, i * 150 + Math.random() * 200);
+  }
+}
+
+// ---- Auto spawn logic ----
 function autoFirework() {
   if (!fwActive) return;
   fwTimer--;
-  if (fwTimer <= 0) {
-    const x = Math.random() * window.innerWidth * 0.8 + window.innerWidth * 0.1;
-    const y = Math.random() * window.innerHeight * 0.5 + window.innerHeight * 0.1;
-    spawnFW(x, y);
-    fwTimer = 20 + Math.floor(Math.random() * 40);
+
+  // Grand finale timer
+  fwGrandTimer--;
+  if (fwGrandTimer <= 0) {
+    spawnGrandFinale();
+    fwGrandTimer = 500 + Math.floor(Math.random() * 400); // ~8-15 seconds
   }
+
+  if (fwTimer <= 0) {
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const x = W * 0.1 + Math.random() * W * 0.8;
+    const y = H * 0.1 + Math.random() * H * 0.44;
+
+    // 50% rocket launch, 50% instant burst
+    if (Math.random() < 0.5) {
+      fwRockets.push(new Rocket(x, y, null, false));
+    } else {
+      if (Math.random() < 0.3) spawnRingFW(x, y, null);
+      else spawnFW(x, y, null, false);
+    }
+    fwTimer = 25 + Math.floor(Math.random() * 50);
+  }
+}
+
+// ---- Crackle: secondary splits ----
+function processCrackle() {
+  const newParticles = [];
+  for (let i = fwParticles.length - 1; i >= 0; i--) {
+    const p = fwParticles[i];
+    if (p.canCrackle && !p.crackled && p.life < 0.35 && p.life > 0.05) {
+      p.crackled = true;
+      const count = 2 + Math.floor(Math.random() * 3);
+      for (let j = 0; j < count; j++) {
+        const sp = new FireworkParticle(p.x, p.y, p.color, 0.5);
+        sp.size = p.size * 0.5;
+        sp.decay = p.decay * 1.8;
+        sp.life = p.life * 0.7;
+        sp.canCrackle = false;
+        newParticles.push(sp);
+      }
+    }
+  }
+  for (const np of newParticles) fwParticles.push(np);
 }
 
 function animateFW() {
@@ -597,11 +760,21 @@ function animateFW() {
 
   autoFirework();
 
+  // Update & draw rockets
+  for (let i = fwRockets.length - 1; i >= 0; i--) {
+    fwRockets[i].update();
+    fwRockets[i].draw(fwCtx);
+    if (!fwRockets[i].alive) fwRockets.splice(i, 1);
+  }
+
+  // Update & draw particles
   for (let i = fwParticles.length - 1; i >= 0; i--) {
     fwParticles[i].update();
     fwParticles[i].draw(fwCtx);
     if (fwParticles[i].life <= 0) fwParticles.splice(i, 1);
   }
+
+  processCrackle();
   requestAnimationFrame(animateFW);
 }
 
@@ -610,13 +783,16 @@ function startFireworks() {
   fwActive = true;
   resizeFW();
   fwParticles = [];
+  fwRockets = [];
   fwTimer = 0;
+  fwGrandTimer = 60; // first grand finale after ~1 second
   animateFW();
 }
 
 function stopFireworks() {
   fwActive = false;
   fwParticles = [];
+  fwRockets = [];
 }
 
 // ==================== Particle Text Animation ====================
