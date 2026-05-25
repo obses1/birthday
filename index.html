@@ -360,6 +360,17 @@
     box-shadow: 0 0 60px rgba(255,180,100,0.2);
   }
 
+  .card-photo {
+    display: block;
+    max-width: 70%;
+    max-height: 220px;
+    object-fit: contain;
+    margin: 0 auto 24px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,215,0,0.25);
+    box-shadow: 0 0 24px rgba(255,180,100,0.2);
+  }
+
   .card-content {
     color: rgba(255,255,255,0.85);
     font-size: 1rem;
@@ -481,6 +492,7 @@
   <div class="card-overlay" id="cardOverlay">
     <div class="card-box">
       <button class="card-close-btn" id="cardCloseBtn">✕</button>
+      <img class="card-photo" src="be8705d3d5bad37eb5fee9e6f823f4a2.png" alt="合照">
       <div class="card-content">
         <p>晓娜：</p>
         <p>这是我们认识的又一个年头了。从课桌旁到各自的城市，时间跑得很快，但有些东西一直没变——比如每年这一天，总要认认真真跟你说一句：生日快乐。</p>
@@ -816,7 +828,7 @@ const ptCanvas = document.getElementById('particleTextCanvas');
 const ptCtx = ptCanvas.getContext('2d');
 let ptActive = false;
 let ptParticles = [];
-const ptTexts = ['同桌', '生日快乐'];
+const ptTexts = ['同桌', '生日快乐', 'Happy Birthday'];
 const ptTimers = [];
 
 function resizePT() {
@@ -2004,7 +2016,8 @@ const cardContent = document.querySelector('.card-content');
 const cardParagraphs = [
   '晓娜：',
   '这是我们认识的又一个年头了。从课桌旁到各自的城市，时间跑得很快，但有些东西一直没变——比如每年这一天，总要认认真真跟你说一句：生日快乐。',
-  '21岁了，愿你依然保持那份让人羡慕的率真和热情，愿你想做的事都能做成，想去的地方都能抵达，想爱的人都在身边。'
+  '一岁有一岁的味道，一站有一站的风景，希望每天都充满幸福和好运，不再因为任何人或事内耗。希望新一岁的你，一直进步，漂漂亮亮，成为闪闪发光人。'
+  
 ];
 let typewriterTimer = null;
 let cardTyping = false;
@@ -2080,9 +2093,6 @@ document.addEventListener('click', (e) => {
     }
   }
 });
-
-// Click to wish
-cake4Container.addEventListener('click', () => triggerWish());
 
 // Mic blow detection
 async function setupCake4Mic() {
